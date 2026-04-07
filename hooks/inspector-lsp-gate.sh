@@ -10,8 +10,8 @@
 FLAG="/tmp/.inspector-lsp-ready-${CLAUDE_AGENT_ID:-default}"
 
 if [ ! -f "$FLAG" ]; then
-  echo '{"decision":"block","reason":"BLOCKED: You must call mcp__lsp__start_lsp(root_dir=<workspace>, language=<lang>) before reading any files. This is the mandatory first action for the inspector agent."}'
-  exit 0
+  echo "BLOCKED: Call mcp__lsp__start_lsp(root_dir=<workspace>, language=<lang>) before reading any files." >&2
+  exit 2
 fi
 
 exit 0
