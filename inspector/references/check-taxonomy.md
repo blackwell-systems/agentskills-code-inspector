@@ -9,9 +9,9 @@ A symbol is defined but never referenced at runtime.
 
 **Tool strategy:**
 1. Locate the symbol definition with Grep to get exact file:line:character
-2. Call LSP `findReferences` on that position — required before any conclusion
-3. If LSP returns no response: fall back to Grep across the full repo
-4. Zero references outside the definition site = dead
+2. **REQUIRED — call `mcp__lsp__get_references` with the exact file_path, line, and character from step 1.** A dead_symbol finding is invalid without this call.
+3. If `mcp__lsp__get_references` errors or is unavailable: fall back to Grep across the full repo — mark finding as `[LSP unavailable — Grep fallback, reduced confidence]`
+4. Zero references outside the definition site = dead. Report the LSP result verbatim: `[LSP findReferences: N references]`
 
 **Severity:** warning if the symbol has a comment suggesting future use; error otherwise.
 
@@ -100,8 +100,8 @@ An exported symbol (function, method, type) has no corresponding test.
 **Tool strategy:**
 1. Enumerate exported symbols in the area with Grep (`^func [A-Z]`, `^type [A-Z]`, etc.)
 2. For each symbol, search test files (`*_test.go`, `*.test.ts`, `test_*.py`, etc.) for its name with Grep
-3. LSP `findReferences` to confirm whether test files are callers
-4. Flag symbols with zero test references
+3. **REQUIRED — call `mcp__lsp__get_references` on the symbol definition position to confirm whether test files are callers.** Grep misses aliased calls; LSP gives ground truth.
+4. Flag symbols with zero test references. Report `[LSP findReferences: N references, M in test files]`
 
 **Severity:** error for public API surface (exported and called externally); warning for internal helpers that are exported but only used within the package.
 
@@ -125,9 +125,9 @@ A function's documentation no longer matches its signature or behavior.
 
 **Tool strategy:**
 1. Read the function signature and its doc comment
-2. Call LSP `hover` on the function — gives the canonical signature the compiler sees, independent of what the source text says
-3. Compare hover output against the doc comment: parameter names, types, return values, described behavior
-4. Flag mismatches — renamed parameters, removed return values, behavior described that the code does not implement
+2. **REQUIRED — call `mcp__lsp__get_info_on_location` with the exact file_path, line, and character of the function name.** Gives the canonical signature the compiler sees, independent of what the source text says. A doc_drift finding is invalid without this call.
+3. If `mcp__lsp__get_info_on_location` is unavailable: fall back to direct Read — mark finding as `[LSP unavailable — Read fallback, reduced confidence]`
+4. Compare hover output against the doc comment: parameter names, types, return values, described behavior. Flag mismatches.
 
 **Severity:** warning — doc drift misleads callers but does not cause runtime failures. Error only if the drift describes incorrect error conditions (caller may suppress errors they shouldn't).
 
@@ -138,7 +138,7 @@ An interface or abstract type has too many methods, preventing callers from usin
 
 **Tool strategy:**
 1. Read the interface definition and count methods
-2. LSP `findReferences` on the type to identify all implementors and callers
+2. **REQUIRED — call `mcp__lsp__get_references` on the type name position to identify all implementors and callers.** Interface saturation findings are invalid without this call.
 3. For each caller, check how many methods it actually uses
 4. Check if a coherent subset of the methods forms an independently useful contract
 
