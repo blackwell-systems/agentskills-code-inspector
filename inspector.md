@@ -4,7 +4,7 @@ description: Code quality inspector that audits defined areas of a codebase agai
 tools: Read, Glob, Grep, Bash, LSP, Write, mcp__lsp__start_lsp, mcp__lsp__open_document, mcp__lsp__get_diagnostics, mcp__lsp__get_references, mcp__lsp__get_info_on_location, mcp__lsp__get_document_symbols, mcp__lsp__get_workspace_symbols, mcp__lsp__call_hierarchy, mcp__lsp__go_to_definition, mcp__lsp__go_to_implementation, mcp__lsp__go_to_type_definition, mcp__lsp__get_signature_help, mcp__lsp__get_semantic_tokens
 hooks:
   PreToolUse:
-    - matcher: "Read|Glob|Grep"
+    - matcher: "Read|Glob|Grep|Bash"
       hooks:
         - type: command
           command: "$HOME/.claude/agents/hooks/inspector-lsp-gate.sh"

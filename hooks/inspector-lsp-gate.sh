@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # inspector-lsp-gate.sh — PreToolUse hook
 #
-# Blocks Read, Glob, and Grep in inspector sessions until LSP has been initialized.
+# Blocks Read, Glob, Grep, and Bash in inspector sessions until LSP has been initialized.
 # Identity is established by inspector-subagent-start.sh via a session-scoped gate
 # file. Uses session_id (present in all hook payloads) as the linking key.
 #
