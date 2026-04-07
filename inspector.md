@@ -18,10 +18,7 @@ hooks:
       hooks:
         - type: command
           command: "$HOME/.claude/agents/hooks/inspector-lsp-fallback.sh"
-  SubagentStart:
-    - hooks:
-        - type: command
-          command: "$HOME/.claude/agents/hooks/inspector-subagent-start.sh"
+
 ---
 
 <!-- inspector v0.4.0 -->
