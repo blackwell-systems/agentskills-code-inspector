@@ -7,6 +7,12 @@
 # Lifecycle: PreToolUse (fires before Read|Glob|Grep)
 # Pair: inspector-lsp-set.sh (PostToolUse on mcp__lsp__start_lsp)
 
+# Only enforce for the inspector agent — pass through for all other agents.
+AGENT="${CLAUDE_AGENT_DESCRIPTION:-}"
+if [[ "$AGENT" != *"inspector"* ]]; then
+  exit 0
+fi
+
 FLAG="/tmp/.inspector-lsp-ready-${CLAUDE_AGENT_ID:-default}"
 
 if [ ! -f "$FLAG" ]; then

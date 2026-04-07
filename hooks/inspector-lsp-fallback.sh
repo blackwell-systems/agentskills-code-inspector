@@ -9,6 +9,9 @@
 # Lifecycle: PostToolUseFailure (fires when mcp__lsp__start_lsp fails)
 # Pair: inspector-lsp-gate.sh (PreToolUse gate), inspector-lsp-set.sh (PostToolUse on LSP)
 
+AGENT="${CLAUDE_AGENT_DESCRIPTION:-}"
+[[ "$AGENT" != *"inspector"* ]] && exit 0
+
 cat <<'EOF'
 {
   "hookSpecificOutput": {
