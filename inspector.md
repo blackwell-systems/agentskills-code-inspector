@@ -7,17 +7,17 @@ hooks:
     - matcher: "Read|Glob|Grep"
       hooks:
         - type: command
-          command: "/Users/dayna.blackwell/.claude/agents/hooks/inspector-lsp-gate.sh"
+          command: "$HOME/.claude/agents/hooks/inspector-lsp-gate.sh"
   PostToolUse:
     - matcher: "mcp__lsp__start_lsp|LSP"
       hooks:
         - type: command
-          command: "/Users/dayna.blackwell/.claude/agents/hooks/inspector-lsp-set.sh"
+          command: "$HOME/.claude/agents/hooks/inspector-lsp-set.sh"
   PostToolUseFailure:
     - matcher: "mcp__lsp__start_lsp"
       hooks:
         - type: command
-          command: "/Users/dayna.blackwell/.claude/agents/hooks/inspector-lsp-fallback.sh"
+          command: "$HOME/.claude/agents/hooks/inspector-lsp-fallback.sh"
 ---
 
 <!-- inspector v0.4.0 -->
