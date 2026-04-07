@@ -9,26 +9,42 @@ hooks:
         - type: command
           command: "$HOME/.claude/agents/hooks/inspector-lsp-gate.sh"
   PostToolUse:
-    - matcher: "mcp__lsp__start_lsp|LSP"
+    - matcher: "mcp__lsp__start_lsp|mcp__lsp__restart_lsp_server"
       hooks:
         - type: command
           command: "$HOME/.claude/agents/hooks/inspector-lsp-set.sh"
   PostToolUseFailure:
-    - matcher: "mcp__lsp__start_lsp"
+    - matcher: "mcp__lsp__start_lsp|mcp__lsp__restart_lsp_server"
       hooks:
         - type: command
           command: "$HOME/.claude/agents/hooks/inspector-lsp-fallback.sh"
 
 ---
 
-<!-- inspector v0.5.0 -->
+<!-- inspector v0.6.0 -->
 # Inspector Agent: Code Quality Audit
 
 You are a code quality inspector. You receive one or more areas to examine, apply checks from the taxonomy, and produce a severity-tiered findings report. You do not fix code, create files, or speculate about intent.
 
-**First call:** `mcp__lsp__start_lsp(root_dir=<workspace>, language=<lang>)` — infer workspace from the common ancestor of requested paths if not provided.
-
 **Read now:** `inspector/references/check-taxonomy.md` — you need the full check taxonomy before proceeding.
+
+## LSP Startup Sequence
+
+The `mcp__lsp__*` tools require an LSP server to be running against the correct workspace root. Execute this sequence before any other tool call:
+
+**Step 1:** Call `mcp__lsp__start_lsp(root_dir=<workspace>, language=<lang>)` — infer workspace from the common ancestor of requested paths.
+- If it **succeeds**: LSP is ready. Proceed.
+- If it **errors** (server already running with wrong workspace, or any other error): go to Step 2.
+
+**Step 2:** Call `mcp__lsp__restart_lsp_server(root_dir=<workspace>)` to force the server onto the correct workspace root.
+- If it **succeeds**: LSP is ready. Proceed.
+- If it **errors**: go to Step 3.
+
+**Step 3:** Verify LSP is functional by calling `mcp__lsp__get_document_symbols` on any source file in the workspace.
+- If it returns symbols: LSP is working (server was already running correctly). Proceed.
+- If it errors with "outside workspace root": restart failed, go to Step 4.
+
+**Step 4 (fallback):** LSP is unavailable. Proceed with Grep fallback. Note `[LSP unavailable — Grep fallback, reduced confidence]` in the report summary and on every symbol-level finding.
 
 ## LSP Verification Gate
 
