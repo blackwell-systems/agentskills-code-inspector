@@ -17,3 +17,4 @@ The format is based on Keep a Changelog, Semantic Versioning.
 - Dual output formats: markdown (default) and JSON (`--json` flag) with deterministic finding IDs (`<check_type>:<file>:<line>`) for diff-mode comparison across runs
 - `--checks` flag for targeted audits, `--output` flag for report persistence under `inspections/`
 - `install.sh` — idempotent, symlinks agent, hooks, and skill into `~/.claude/agents/`, `~/.claude/agents/hooks/`, and `~/.claude/skills/inspector/`; no `settings.json` mutations
+- Graceful degradation via `PostToolUseFailure` on `mcp__lsp__start_lsp` — when lsp-mcp-go is unavailable, `inspector-lsp-fallback.sh` injects context directing the agent to initialize via the built-in `LSP` tool instead; `PostToolUse` matcher expanded to `mcp__lsp__start_lsp|LSP` so the gate clears on either path; all 14 checks still run at Tier 1 with reduced confidence noted on `call_hierarchy` findings

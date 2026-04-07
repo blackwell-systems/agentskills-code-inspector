@@ -30,11 +30,13 @@ do_install() {
   # 2. Hook scripts
   echo "2. Linking hook scripts..."
   mkdir -p "${HOOKS_DIR}"
-  ln -sf "${REPO_DIR}/hooks/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-gate.sh"
-  ln -sf "${REPO_DIR}/hooks/inspector-lsp-set.sh"  "${HOOKS_DIR}/inspector-lsp-set.sh"
-  chmod +x "${REPO_DIR}/hooks/inspector-lsp-gate.sh" "${REPO_DIR}/hooks/inspector-lsp-set.sh"
+  ln -sf "${REPO_DIR}/hooks/inspector-lsp-gate.sh"     "${HOOKS_DIR}/inspector-lsp-gate.sh"
+  ln -sf "${REPO_DIR}/hooks/inspector-lsp-set.sh"      "${HOOKS_DIR}/inspector-lsp-set.sh"
+  ln -sf "${REPO_DIR}/hooks/inspector-lsp-fallback.sh" "${HOOKS_DIR}/inspector-lsp-fallback.sh"
+  chmod +x "${REPO_DIR}/hooks/inspector-lsp-gate.sh" "${REPO_DIR}/hooks/inspector-lsp-set.sh" "${REPO_DIR}/hooks/inspector-lsp-fallback.sh"
   echo "   ${HOOKS_DIR}/inspector-lsp-gate.sh"
   echo "   ${HOOKS_DIR}/inspector-lsp-set.sh"
+  echo "   ${HOOKS_DIR}/inspector-lsp-fallback.sh"
   echo ""
 
   # 3. Skill files
@@ -47,7 +49,7 @@ do_install() {
   # 4. Verify
   echo "4. Verifying..."
   local errors=0
-  for f in "${AGENTS_DIR}/inspector.md" "${HOOKS_DIR}/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-set.sh" "${SKILLS_DIR}/SKILL.md"; do
+  for f in "${AGENTS_DIR}/inspector.md" "${HOOKS_DIR}/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-set.sh" "${HOOKS_DIR}/inspector-lsp-fallback.sh" "${SKILLS_DIR}/SKILL.md"; do
     if [ -L "$f" ] && [ -e "$f" ]; then
       echo "   OK  $f"
     else
@@ -76,7 +78,7 @@ do_uninstall() {
   echo "Uninstalling inspector agent..."
   echo ""
 
-  for f in "${AGENTS_DIR}/inspector.md" "${HOOKS_DIR}/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-set.sh" "${SKILLS_DIR}/SKILL.md"; do
+  for f in "${AGENTS_DIR}/inspector.md" "${HOOKS_DIR}/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-set.sh" "${HOOKS_DIR}/inspector-lsp-fallback.sh" "${SKILLS_DIR}/SKILL.md"; do
     if [ -L "$f" ]; then
       rm "$f"
       echo "  Removed $f"
