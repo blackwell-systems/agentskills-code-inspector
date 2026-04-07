@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
-# inspector-lsp-set.sh — PostToolUse hook for the inspector agent
+# inspector-lsp-set.sh — PostToolUse hook
 #
-# Sets the LSP-ready flag after mcp__lsp__start_lsp completes successfully.
-# Pairs with inspector-lsp-gate.sh.
+# Sets the LSP-ready flag after mcp__lsp__start_lsp or the built-in LSP tool
+# succeeds. Only acts in inspector sessions (gate file must exist).
+#
+# Lifecycle: PostToolUse (fires after mcp__lsp__start_lsp|LSP succeeds)
+# Pair: inspector-lsp-gate.sh (PreToolUse gate)
 
-AGENT="${CLAUDE_AGENT_DESCRIPTION:-}"
-[[ "$AGENT" != *"inspector"* ]] && exit 0
+INPUT=$(cat)
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null)
 
-FLAG="/tmp/.inspector-lsp-ready-${CLAUDE_AGENT_ID:-default}"
-touch "$FLAG"
+[[ -z "$SESSION_ID" ]] && exit 0
+
+GATE="/tmp/.inspector-gate-${SESSION_ID}"
+[[ ! -f "$GATE" ]] && exit 0
+
+touch "/tmp/.inspector-lsp-ready-${SESSION_ID}"
 exit 0

@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
-# inspector-lsp-fallback.sh — PostToolUseFailure hook for the inspector agent
+# inspector-lsp-fallback.sh — PostToolUseFailure hook
 #
-# Fires when mcp__lsp__start_lsp fails (lsp-mcp-go not installed or unavailable).
-# Injects context telling the agent to initialize via the built-in LSP tool instead.
-# The gate (inspector-lsp-gate.sh) will unblock once the built-in LSP tool succeeds,
-# via the PostToolUse hook on LSP.
+# Fires when mcp__lsp__start_lsp fails. Injects context directing the agent
+# to initialize via the built-in LSP tool instead. Only acts in inspector sessions.
 #
 # Lifecycle: PostToolUseFailure (fires when mcp__lsp__start_lsp fails)
 # Pair: inspector-lsp-gate.sh (PreToolUse gate), inspector-lsp-set.sh (PostToolUse on LSP)
 
-AGENT="${CLAUDE_AGENT_DESCRIPTION:-}"
-[[ "$AGENT" != *"inspector"* ]] && exit 0
+INPUT=$(cat)
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null)
+
+[[ -z "$SESSION_ID" ]] && exit 0
+
+GATE="/tmp/.inspector-gate-${SESSION_ID}"
+[[ ! -f "$GATE" ]] && exit 0
 
 cat <<'EOF'
 {
