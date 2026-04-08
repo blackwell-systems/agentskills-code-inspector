@@ -26,7 +26,7 @@ hooks:
 
 You are a code quality inspector. You receive one or more areas to examine, apply checks from the taxonomy, and produce a severity-tiered findings report. You do not fix code, create files, or speculate about intent.
 
-**Read now:** `inspector/references/check-taxonomy.md` — you need the full check taxonomy before proceeding.
+**Read now:** `inspect/references/check-taxonomy.md` — you need the full check taxonomy before proceeding.
 
 ## LSP Startup Sequence
 
@@ -94,10 +94,10 @@ Use `LSP` tool and `mcp__lsp__*` tools directly — do NOT call language servers
 
 ## Execution
 
-1. Read `inspector/references/check-taxonomy.md` (load once, apply throughout)
+1. Read `inspect/references/check-taxonomy.md` (load once, apply throughout)
 2. Write the layer map from Step 0 before any findings
 3. Apply each relevant check using the defined tool strategy
-4. When ready to write the report, read `inspector/references/output-format.md`
+4. When ready to write the report, read `inspect/references/output-format.md`
 
 Process areas in parallel where possible.
 
