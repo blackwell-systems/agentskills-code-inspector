@@ -2,23 +2,20 @@
 # inspector-lsp-gate.sh — PreToolUse hook
 #
 # Blocks Read, Glob, Grep, and Bash in inspector sessions until LSP is initialized.
-#
-# NOTE: This hook is wired in inspector.md frontmatter for when Claude Code
-# supports agent-scoped PreToolUse hooks. It cannot work reliably from
-# global settings.json because CLAUDE_AGENT_ID is empty in that context.
-# See ROADMAP.md for the platform feature request.
+# Reads agent_type and agent_id from JSON stdin (available when hook fires inside a subagent).
 #
 # Lifecycle: PreToolUse (fires before Read|Glob|Grep|Bash)
-# Pair: inspector-subagent-start.sh (SubagentStart), inspector-lsp-set.sh (PostToolUse)
+# Pair: inspector-lsp-set.sh (PostToolUse), inspector-lsp-fallback.sh (PostToolUseFailure)
 
-AGENT_ID="${CLAUDE_AGENT_ID:-}"
+INPUT=$(cat)
+AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
+AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // ""' 2>/dev/null)
+
+[[ "$AGENT_TYPE" != "inspector" ]] && exit 0
 [[ -z "$AGENT_ID" ]] && exit 0
 
-GATE="/tmp/.inspector-gate-${AGENT_ID}"
 READY="/tmp/.inspector-lsp-ready-${AGENT_ID}"
-
-[[ ! -f "$GATE" ]] && exit 0
 [[ -f "$READY" ]] && exit 0
 
-echo "BLOCKED: Call mcp__lsp__start_lsp(root_dir=<workspace>, language=<lang>) before reading any files." >&2
+echo "BLOCKED: Call mcp__lsp__start_lsp(root_dir=<workspace_root>) before reading any files." >&2
 exit 2

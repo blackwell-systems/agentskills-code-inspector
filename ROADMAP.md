@@ -7,16 +7,9 @@
 - Graceful degradation when lsp-mcp-go is unavailable — built-in `LSP` tool used as fallback; all checks still run
 - JSON output (`--json`) with deterministic finding IDs for diff-mode comparison across runs
 - `--checks` and `--output` flags
+- Mechanical LSP gate — `PreToolUse` hook blocks `Read/Glob/Grep/Bash` until `mcp__lsp__start_lsp` succeeds; scoped to inspector via `agent_type` in hook JSON input
 
 ## Planned
-
-### Mechanical LSP gate
-
-The LSP gate currently works via a `SubagentStart` hook that injects a strong context
-reminder to call `mcp__lsp__start_lsp` first. A hard mechanical block (hook exit 2) is
-not yet achievable — `CLAUDE_AGENT_ID` is unavailable in `PreToolUse` context when hooks
-are wired globally, so the gate cannot identify which agent is running. This will activate
-automatically once Claude Code exposes agent identity in hook payloads.
 
 ### Improved LSP tier detection
 
