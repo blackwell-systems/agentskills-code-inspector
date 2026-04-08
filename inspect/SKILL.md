@@ -3,9 +3,9 @@ name: inspect
 description: Launch a code quality inspector agent to audit defined areas of a codebase. Language-agnostic. Applies a fixed check taxonomy — dead symbols, layer violations, scope overload, coverage gaps, silent failures, duplicate semantics, cross-field consistency, missing tests on exported symbols, unwrapped errors, doc drift, interface saturation, unrecovered panics, context propagation breaks, and init side effects — using LSP-first tool strategies. Returns a severity-tiered findings report with per-finding confidence levels. Supports --json for structured output, --output for persistence, and --checks to target specific check types. Use when auditing files, packages, or cross-cutting concerns for any of these patterns.
 compatibility: Designed for Claude Code. Requires an agent runtime that supports subagent delegation.
 allowed-tools: Agent(subagent_type=inspector)
+argument-hint: "<path-or-description> [<path-or-description> ...] [--json] [--output <path>] [--checks <type1>,<type2>]"
+user-invocable: true
 metadata:
-  argument-hint: "<path-or-description> [<path-or-description> ...] [--json] [--output <path>] [--checks <type1>,<type2>]"
-  user-invocable: "true"
   schema: assets/schema.json
   validator: scripts/validate-report
 ---
