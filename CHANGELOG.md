@@ -5,6 +5,12 @@ The format is based on Keep a Changelog, Semantic Versioning.
 
 ## [Unreleased]
 
+### Changed
+- Consolidated `/inspector` and `/inspect` skills into a single canonical `/inspect` skill
+- Promoted the more complete `/inspect` skill (with schema and validator) as the canonical version; removed the simpler `/inspector` SKILL.md
+- Added `inspector/assets/schema.json` and `inspector/scripts/validate-report` to the repo — previously lived only in `~/.claude/skills/inspect/` outside version control
+- Updated `install.sh` to install to `~/.claude/skills/inspect/` and symlink all three skill files (SKILL.md, assets/schema.json, scripts/validate-report)
+
 ### Added
 - Initial inspector agent (`inspector.md`) — code quality audit agent for Claude Code
 - Check taxonomy covering 14 check types: `dead_symbol`, `layer_violation`, `scope_analysis`, `coverage_gap`, `silent_failure`, `duplicate_semantics`, `cross_field_consistency`, `test_coverage`, `error_wrapping`, `doc_drift`, `interface_saturation`, `panic_not_recovered`, `context_propagation`, `init_side_effects`
