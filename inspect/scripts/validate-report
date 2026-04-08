@@ -39,12 +39,12 @@ else
   exit 2
 fi
 
-# Validate using Python
-python3 - <<PYEOF
+# Validate using Python (input passed via stdin to avoid injection)
+echo "$INPUT" | python3 - "$SCHEMA_FILE" <<'PYEOF'
 import json, sys
 
-report_text = """${INPUT}"""
-schema_path = """${SCHEMA_FILE}"""
+report_text = sys.stdin.read()
+schema_path = sys.argv[1]
 
 try:
     report = json.loads(report_text)

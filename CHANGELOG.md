@@ -9,6 +9,13 @@ The format is based on Keep a Changelog, Semantic Versioning.
 - Rewrote all hooks (`inspector-lsp-gate.sh`, `inspector-lsp-set.sh`, `inspector-lsp-fallback.sh`) to read `agent_type` and `agent_id` from JSON stdin instead of `$CLAUDE_AGENT_ID` env var — the env var is empty when hooks fire from global `settings.json` context; JSON input fields are always populated inside subagent calls
 - Mechanical LSP gate is now active: `PreToolUse` hook blocks `Read/Glob/Grep/Bash` until `mcp__lsp__start_lsp` succeeds; no longer advisory-only
 - Removed gate sentinel file (`/tmp/.inspector-gate-*`) — `agent_type == "inspector"` from JSON input now serves as the identity check directly
+- Fixed `PostToolUse` matcher to include built-in LSP: `"mcp__lsp__start_lsp"` → `"mcp__lsp__start_lsp|LSP"` — graceful degradation path was broken (gate blocked forever on fallback)
+- Fixed `validate-report` injection vector: `${INPUT}` was interpolated into Python triple-quoted string; now passed via stdin
+- Fixed `rmdir --ignore-fail-on-non-empty` in uninstall — GNU-only flag; plain `rmdir` already refuses non-empty directories
+- Fixed SKILL.md tool name references: `mcp__lsp-mcp__*` → `mcp__lsp__*` to match actual MCP server namespace
+- Removed `mcp__lsp__restart_lsp_server` from agent tools frontmatter — was listed but explicitly prohibited in body text
+- Added `inspect/references/` symlinks to `install.sh` — reference files (check-taxonomy.md, output-format.md) were not installed, causing agent to fail loading taxonomy
+- Aligned version strings across agent (v0.8.0), schema (`$id`), and output-format example
 - Fixed README install path: `~/.claude/skills/inspector/` → `~/.claude/skills/inspect/`
 - Fixed stale `inspector/SKILL.md` path references in README and CHANGELOG
 - Added prerequisites section to README (lsp-mcp-go dependency)
@@ -29,7 +36,7 @@ The format is based on Keep a Changelog, Semantic Versioning.
 - LSP enforcement hooks — `inspector-lsp-gate.sh` blocks `Read|Glob|Grep` until `mcp__lsp__start_lsp` has been called; `inspector-lsp-set.sh` sets the ready flag on success; keyed per `agent_id` from hook JSON input for concurrent safety
 - Hooks wired in agent frontmatter (`PreToolUse`, `PostToolUse`) — no `settings.json` changes required on install
 - `/inspect` skill (`inspect/SKILL.md`) following the agent-skills.io specification
-- Progressive disclosure structure — `inspector.md` core (80 lines) loads `references/check-taxonomy.md` eagerly and `references/output-format.md` lazily at report-writing time
+- Progressive disclosure structure — `inspector.md` core loads `references/check-taxonomy.md` eagerly and `references/output-format.md` lazily at report-writing time
 - Dual output formats: markdown (default) and JSON (`--json` flag) with deterministic finding IDs (`<check_type>:<file>:<line>`) for diff-mode comparison across runs
 - `--checks` flag for targeted audits, `--output` flag for report persistence under `inspections/`
 - `install.sh` — idempotent, symlinks agent, hooks, and skill into `~/.claude/agents/`, `~/.claude/agents/hooks/`, and `~/.claude/skills/inspect/`; no `settings.json` mutations

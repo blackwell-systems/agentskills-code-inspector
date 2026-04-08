@@ -35,7 +35,7 @@ and why it failed.]
 
 ```json
 {
-  "inspector_version": "0.3.0",
+  "inspector_version": "0.8.0",
   "timestamp": "<ISO8601>",
   "repo_root": "<absolute path>",
   "areas": ["<area1>", "<area2>"],

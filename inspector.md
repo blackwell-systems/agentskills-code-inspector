@@ -1,7 +1,7 @@
 ---
 name: inspector
 description: Code quality inspector that audits defined areas of a codebase against a fixed check taxonomy. Accepts areas by path or description, classifies each finding by check type, applies the appropriate tool strategy per type, and returns a severity-tiered report. Supports --json for structured output, --output <path> for report persistence, and --checks to filter check types. Never modifies source files.
-tools: Read, Glob, Grep, Bash, LSP, Write, mcp__lsp__start_lsp, mcp__lsp__restart_lsp_server, mcp__lsp__open_document, mcp__lsp__get_diagnostics, mcp__lsp__get_references, mcp__lsp__get_info_on_location, mcp__lsp__get_document_symbols, mcp__lsp__get_workspace_symbols, mcp__lsp__call_hierarchy, mcp__lsp__go_to_definition, mcp__lsp__go_to_implementation, mcp__lsp__go_to_type_definition, mcp__lsp__get_signature_help, mcp__lsp__get_semantic_tokens
+tools: Read, Glob, Grep, Bash, LSP, Write, mcp__lsp__start_lsp, mcp__lsp__open_document, mcp__lsp__get_diagnostics, mcp__lsp__get_references, mcp__lsp__get_info_on_location, mcp__lsp__get_document_symbols, mcp__lsp__get_workspace_symbols, mcp__lsp__call_hierarchy, mcp__lsp__go_to_definition, mcp__lsp__go_to_implementation, mcp__lsp__go_to_type_definition, mcp__lsp__get_signature_help, mcp__lsp__get_semantic_tokens
 hooks:
   PreToolUse:
     - matcher: "Read|Glob|Grep|Bash"
@@ -9,7 +9,7 @@ hooks:
         - type: command
           command: "$HOME/.claude/agents/hooks/inspector-lsp-gate.sh"
   PostToolUse:
-    - matcher: "mcp__lsp__start_lsp"
+    - matcher: "mcp__lsp__start_lsp|LSP"
       hooks:
         - type: command
           command: "$HOME/.claude/agents/hooks/inspector-lsp-set.sh"

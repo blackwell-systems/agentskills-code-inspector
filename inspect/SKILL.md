@@ -39,7 +39,7 @@ The inspector applies these checks where relevant — you do not need to specify
 
 | Check | What it finds |
 |-------|--------------|
-| `dead_symbol` | Defined but never referenced (uses `mcp__lsp-mcp__get_references` → high confidence; Grep fallback → low confidence) |
+| `dead_symbol` | Defined but never referenced (uses `mcp__lsp__get_references` → high confidence; Grep fallback → low confidence) |
 | `layer_violation` | Import crosses an architectural boundary |
 | `scope_analysis` | Function or module doing too many things |
 | `coverage_gap` | Unhandled input, error, or code path |
@@ -67,7 +67,7 @@ Launch inspector agent with:
 - Flags: pass through --json, --output, --checks as provided
 - run_in_background: true
 - Instructions: apply the check taxonomy, report findings with severity and file:line citations
-- First instruction to agent: call mcp__lsp-mcp__start_lsp(root_dir="<repo_root>") before any other operation
+- First instruction to agent: call mcp__lsp__start_lsp(root_dir="<repo_root>") before any other operation
 ```
 
 **Critical: LSP tool usage.** Include this instruction verbatim in the inspector agent's
@@ -76,14 +76,14 @@ launch prompt — the agent definition alone is not sufficient:
 > **LSP enforcement:** You have two LSP tool surfaces. Use them in this priority order:
 >
 > **Step 0 — initialize gopls (required, do this first):**
-> `mcp__lsp-mcp__start_lsp(root_dir="<repo_root>")`
+> `mcp__lsp__start_lsp(root_dir="<repo_root>")`
 > This points gopls at the right workspace for module discovery. Without this,
 > all LSP calls return empty results. Call once before reading any files.
 >
-> **1. `mcp__lsp-mcp__get_references` (preferred for `dead_symbol`):**
+> **1. `mcp__lsp__get_references` (preferred for `dead_symbol`):**
 > Call this for all reference lookups. It opens the file, queries gopls, and returns
 > 1-based locations. No `open_document` call needed first.
-> Example: `mcp__lsp-mcp__get_references(file_path="/abs/path/file.go", language_id="go", line=22, column=6)`
+> Example: `mcp__lsp__get_references(file_path="/abs/path/file.go", language_id="go", line=22, column=6)`
 > Zero results = dead symbol (high confidence). If the call errors, fall back to option 2.
 >
 > **2. `LSP` built-in tool (fallback or for hover/other operations):**
