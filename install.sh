@@ -14,7 +14,7 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AGENTS_DIR="${HOME}/.claude/agents"
 HOOKS_DIR="${HOME}/.claude/agents/hooks"
-SKILLS_DIR="${HOME}/.claude/skills/inspector"
+SKILLS_DIR="${HOME}/.claude/skills/inspect"
 
 do_install() {
   echo "Installing inspector agent..."
@@ -43,15 +43,20 @@ do_install() {
 
   # 3. Skill files
   echo "3. Linking skill files..."
-  mkdir -p "${SKILLS_DIR}"
-  ln -sf "${REPO_DIR}/inspector/SKILL.md" "${SKILLS_DIR}/SKILL.md"
+  mkdir -p "${SKILLS_DIR}/assets" "${SKILLS_DIR}/scripts"
+  ln -sf "${REPO_DIR}/inspector/SKILL.md"                "${SKILLS_DIR}/SKILL.md"
+  ln -sf "${REPO_DIR}/inspector/assets/schema.json"      "${SKILLS_DIR}/assets/schema.json"
+  ln -sf "${REPO_DIR}/inspector/scripts/validate-report" "${SKILLS_DIR}/scripts/validate-report"
+  chmod +x "${REPO_DIR}/inspector/scripts/validate-report"
   echo "   ${SKILLS_DIR}/SKILL.md"
+  echo "   ${SKILLS_DIR}/assets/schema.json"
+  echo "   ${SKILLS_DIR}/scripts/validate-report"
   echo ""
 
   # 4. Verify
   echo "4. Verifying..."
   local errors=0
-  for f in "${AGENTS_DIR}/inspector.md" "${HOOKS_DIR}/inspector-subagent-start.sh" "${HOOKS_DIR}/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-set.sh" "${HOOKS_DIR}/inspector-lsp-fallback.sh" "${SKILLS_DIR}/SKILL.md"; do
+  for f in "${AGENTS_DIR}/inspector.md" "${HOOKS_DIR}/inspector-subagent-start.sh" "${HOOKS_DIR}/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-set.sh" "${HOOKS_DIR}/inspector-lsp-fallback.sh" "${SKILLS_DIR}/SKILL.md" "${SKILLS_DIR}/assets/schema.json" "${SKILLS_DIR}/scripts/validate-report"; do
     if [ -L "$f" ] && [ -e "$f" ]; then
       echo "   OK  $f"
     else
@@ -71,7 +76,7 @@ do_install() {
   echo ""
   echo "  Agent:  ~/.claude/agents/inspector.md"
   echo "  Hooks:  ~/.claude/agents/hooks/inspector-lsp-{gate,set}.sh"
-  echo "  Skill:  ~/.claude/skills/inspector/SKILL.md  (/inspect)"
+  echo "  Skill:  ~/.claude/skills/inspect/  (/inspect)"
   echo ""
   echo "Hooks are wired in inspector.md frontmatter — no settings.json changes needed."
 }
@@ -80,14 +85,16 @@ do_uninstall() {
   echo "Uninstalling inspector agent..."
   echo ""
 
-  for f in "${AGENTS_DIR}/inspector.md" "${HOOKS_DIR}/inspector-subagent-start.sh" "${HOOKS_DIR}/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-set.sh" "${HOOKS_DIR}/inspector-lsp-fallback.sh" "${SKILLS_DIR}/SKILL.md"; do
+  for f in "${AGENTS_DIR}/inspector.md" "${HOOKS_DIR}/inspector-subagent-start.sh" "${HOOKS_DIR}/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-set.sh" "${HOOKS_DIR}/inspector-lsp-fallback.sh" "${SKILLS_DIR}/SKILL.md" "${SKILLS_DIR}/assets/schema.json" "${SKILLS_DIR}/scripts/validate-report"; do
     if [ -L "$f" ]; then
       rm "$f"
       echo "  Removed $f"
     fi
   done
 
-  [ -d "${SKILLS_DIR}" ] && rmdir --ignore-fail-on-non-empty "${SKILLS_DIR}" 2>/dev/null || true
+  [ -d "${SKILLS_DIR}/scripts" ] && rmdir --ignore-fail-on-non-empty "${SKILLS_DIR}/scripts" 2>/dev/null || true
+  [ -d "${SKILLS_DIR}/assets" ]  && rmdir --ignore-fail-on-non-empty "${SKILLS_DIR}/assets"  2>/dev/null || true
+  [ -d "${SKILLS_DIR}" ]         && rmdir --ignore-fail-on-non-empty "${SKILLS_DIR}"          2>/dev/null || true
 
   echo ""
   echo "Uninstall complete."

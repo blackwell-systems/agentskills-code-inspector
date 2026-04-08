@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+# validate-report — validate an inspector JSON report against the schema
+#
+# Usage:
+#   validate-report <report.json>
+#   cat report.json | validate-report
+#
+# Requires: python3 (standard library only — uses jsonschema if available,
+# falls back to structural validation otherwise)
+#
+# Exit codes:
+#   0 — valid
+#   1 — invalid (errors printed to stdout)
+#   2 — usage error or file not found
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCHEMA_FILE="${SCRIPT_DIR}/../assets/schema.json"
+
+if [ ! -f "$SCHEMA_FILE" ]; then
+  echo "ERROR: schema.json not found at ${SCHEMA_FILE}" >&2
+  exit 2
+fi
+
+# Read input
+if [ $# -eq 1 ]; then
+  INPUT_FILE="$1"
+  if [ ! -f "$INPUT_FILE" ]; then
+    echo "ERROR: file not found: ${INPUT_FILE}" >&2
+    exit 2
+  fi
+  INPUT=$(cat "$INPUT_FILE")
+elif [ ! -t 0 ]; then
+  INPUT=$(cat)
+else
+  echo "Usage: validate-report <report.json>" >&2
+  echo "       cat report.json | validate-report" >&2
+  exit 2
+fi
+
+# Validate using Python
+python3 - <<PYEOF
+import json, sys
+
+report_text = """${INPUT}"""
+schema_path = """${SCHEMA_FILE}"""
+
+try:
+    report = json.loads(report_text)
+except json.JSONDecodeError as e:
+    print(f"INVALID: JSON parse error: {e}")
+    sys.exit(1)
+
+with open(schema_path) as f:
+    schema = json.load(f)
+
+errors = []
+
+# Try jsonschema if available
+try:
+    import jsonschema
+    validator = jsonschema.Draft7Validator(schema)
+    for error in sorted(validator.iter_errors(report), key=lambda e: list(e.path)):
+        path = ".".join(str(p) for p in error.path) or "(root)"
+        errors.append(f"  {path}: {error.message}")
+except ImportError:
+    # Fallback: structural validation
+    required = schema.get("required", [])
+    for field in required:
+        if field not in report:
+            errors.append(f"  (root): missing required field '{field}'")
+
+    # Check findings structure
+    for i, finding in enumerate(report.get("findings", [])):
+        for req_field in ["id", "check_type", "severity", "confidence", "file", "line", "description", "tool", "recommendation"]:
+            if req_field not in finding:
+                errors.append(f"  findings[{i}]: missing required field '{req_field}'")
+        if "severity" in finding and finding["severity"] not in ("error", "warning"):
+            errors.append(f"  findings[{i}].severity: must be 'error' or 'warning', got '{finding['severity']}'")
+        if "confidence" in finding and finding["confidence"] not in ("high", "reduced"):
+            errors.append(f"  findings[{i}].confidence: must be 'high' or 'reduced', got '{finding['confidence']}'")
+        if "id" in finding:
+            parts = finding["id"].split(":")
+            if len(parts) < 3:
+                errors.append(f"  findings[{i}].id: must be check_type:file:line format, got '{finding['id']}'")
+
+    # Check summary structure
+    summary = report.get("summary", {})
+    for req_field in ["total", "by_severity", "by_confidence", "by_check_type", "not_checked"]:
+        if req_field not in summary:
+            errors.append(f"  summary: missing required field '{req_field}'")
+    not_checked = summary.get("not_checked", {})
+    for req_field in ["out_of_scope", "tooling_constraints"]:
+        if req_field not in not_checked:
+            errors.append(f"  summary.not_checked: missing required field '{req_field}'")
+
+if errors:
+    print(f"INVALID: {len(errors)} error(s) found")
+    for e in errors:
+        print(e)
+    sys.exit(1)
+else:
+    version = report.get("inspector_version", "unknown")
+    finding_count = len(report.get("findings", []))
+    print(f"VALID: inspector v{version}, {finding_count} finding(s)")
+    sys.exit(0)
+PYEOF

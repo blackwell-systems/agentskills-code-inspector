@@ -1,0 +1,199 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "inspector-report-v0.2.0",
+  "title": "Inspector Report",
+  "description": "Output schema for the inspector agent v0.2.0",
+  "type": "object",
+  "required": [
+    "inspector_version",
+    "timestamp",
+    "repo_root",
+    "areas",
+    "layer_map",
+    "architectural_context",
+    "checks_applied",
+    "findings",
+    "summary"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "inspector_version": {
+      "type": "string",
+      "description": "Inspector agent version that produced this report"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO8601 timestamp when the report was produced"
+    },
+    "repo_root": {
+      "type": "string",
+      "description": "Absolute path to the repository root"
+    },
+    "areas": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Areas audited, as provided in the prompt"
+    },
+    "layer_map": {
+      "type": "string",
+      "description": "Architectural layer map committed during Step 0, e.g. 'cmd → engine → protocol → result'"
+    },
+    "architectural_context": {
+      "type": "string",
+      "description": "One-sentence summary of what orientation found about established patterns"
+    },
+    "checks_applied": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "dead_symbol",
+          "layer_violation",
+          "scope_analysis",
+          "coverage_gap",
+          "silent_failure",
+          "duplicate_semantics",
+          "cross_field_consistency",
+          "test_coverage",
+          "error_wrapping",
+          "doc_drift",
+          "interface_saturation",
+          "panic_not_recovered",
+          "context_propagation",
+          "init_side_effects"
+        ]
+      },
+      "description": "Check types that were applied in this run"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "check_type",
+          "severity",
+          "confidence",
+          "file",
+          "line",
+          "description",
+          "tool",
+          "recommendation"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z_]+:.+:[0-9]+$",
+            "description": "Deterministic ID: check_type:repo-relative-file:line"
+          },
+          "check_type": {
+            "type": "string",
+            "enum": [
+              "dead_symbol",
+              "layer_violation",
+              "scope_analysis",
+              "coverage_gap",
+              "silent_failure",
+              "duplicate_semantics",
+              "cross_field_consistency",
+              "test_coverage",
+              "error_wrapping",
+              "doc_drift",
+              "interface_saturation",
+              "panic_not_recovered",
+              "context_propagation",
+              "init_side_effects"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["error", "warning"]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "reduced"],
+            "description": "high = LSP produced the result; reduced = Grep fallback used"
+          },
+          "file": {
+            "type": "string",
+            "description": "Repo-relative file path"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "symbol": {
+            "type": "string",
+            "description": "Symbol name if applicable (optional)"
+          },
+          "description": {
+            "type": "string",
+            "description": "What was found"
+          },
+          "tool": {
+            "type": "string",
+            "description": "Which tool produced the result, e.g. 'LSP findReferences: 0' or 'LSP unavailable — Grep fallback'"
+          },
+          "recommendation": {
+            "type": "string",
+            "description": "Concrete recommended fix"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total", "by_severity", "by_confidence", "by_check_type", "not_checked"],
+      "additionalProperties": false,
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "by_severity": {
+          "type": "object",
+          "required": ["error", "warning"],
+          "additionalProperties": false,
+          "properties": {
+            "error": { "type": "integer", "minimum": 0 },
+            "warning": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "by_confidence": {
+          "type": "object",
+          "required": ["high", "reduced"],
+          "additionalProperties": false,
+          "properties": {
+            "high": { "type": "integer", "minimum": 0 },
+            "reduced": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "by_check_type": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 },
+          "description": "Count per check type"
+        },
+        "not_checked": {
+          "type": "object",
+          "required": ["out_of_scope", "tooling_constraints"],
+          "additionalProperties": false,
+          "properties": {
+            "out_of_scope": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Things excluded by design"
+            },
+            "tooling_constraints": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Things that could not be checked due to tooling (LSP unavailable, cross-repo inaccessible, etc.)"
+            }
+          }
+        }
+      }
+    }
+  }
+}
