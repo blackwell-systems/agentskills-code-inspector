@@ -1,7 +1,7 @@
 [![Blackwell Systems™](https://raw.githubusercontent.com/blackwell-systems/blackwell-docs-theme/main/badge-trademark.svg)](https://github.com/blackwell-systems)
 [![Agent Skills](assets/badge-agentskills.svg)](https://agentskills.io)
 
-# inspector
+# /inspect
 
 Structured code quality audits for AI coding agents. Inspector applies a fixed check taxonomy against one or more areas of a codebase and returns a severity-tiered findings report with LSP-backed confidence annotations.
 
@@ -22,10 +22,12 @@ cd agentskills-code-inspector
 ./install.sh
 ```
 
+**Prerequisites:** Claude Code with the [lsp-mcp-go](https://github.com/blackwell-systems/lsp-mcp-go) MCP server installed. Inspector uses it for high-confidence LSP-backed findings. Without it, all 14 checks still run at reduced confidence using Grep fallback.
+
 Installs:
 - `~/.claude/agents/inspector.md` — Claude Code agent definition
 - `~/.claude/agents/hooks/inspector-lsp-{gate,set}.sh` — LSP enforcement hooks
-- `~/.claude/skills/inspector/SKILL.md` — `/inspect` skill
+- `~/.claude/skills/inspect/SKILL.md` — `/inspect` skill
 
 No `settings.json` changes required. Hooks are wired in agent frontmatter.
 
@@ -62,4 +64,4 @@ No `settings.json` changes required. Hooks are wired in agent frontmatter.
 
 ## Agent Skills
 
-Inspector is published as an [Agent Skill](https://agentskills.io) — a portable, tool-agnostic package for adding capabilities to AI coding agents. The `inspector/SKILL.md` follows the agent-skills.io open standard.
+Inspector is published as an [Agent Skill](https://agentskills.io) — a portable, tool-agnostic package for adding capabilities to AI coding agents. The `inspect/SKILL.md` follows the agent-skills.io open standard.
