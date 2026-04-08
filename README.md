@@ -22,7 +22,7 @@ cd agentskills-code-inspector
 ./install.sh
 ```
 
-**Prerequisites:** Claude Code with the [lsp-mcp-go](https://github.com/blackwell-systems/lsp-mcp-go) MCP server installed. Inspector uses it for high-confidence LSP-backed findings. Without it, all 14 checks still run at reduced confidence using Grep fallback.
+**Prerequisites:** Claude Code. The [lsp-mcp-go](https://github.com/blackwell-systems/lsp-mcp-go) MCP server is recommended for full LSP capabilities (`call_hierarchy`, `get_diagnostics`, multi-language routing). If unavailable, inspector automatically falls back to Claude Code's built-in LSP tool — most checks work fine, a few degrade (`interface_saturation` without call hierarchy). If both LSP tiers fail, Grep is used with reduced-confidence annotations. All 14 checks run in all modes.
 
 Installs:
 - `~/.claude/agents/inspector.md` — Claude Code agent definition
