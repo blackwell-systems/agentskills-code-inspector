@@ -517,7 +517,7 @@ waves:
             - B
             - C
 quality_gates:
-    level: minimal
+    level: quick
     gates: []
 pre_mortem:
     overall_risk: low
