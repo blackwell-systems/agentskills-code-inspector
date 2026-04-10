@@ -1,0 +1,568 @@
+title: Wire agent-lsp Tier 1A tools into inspector
+feature_slug: lsp-tier1a-tools
+verdict: SUITABLE
+suitability_assessment: |
+    File decomposition: 5 distinct files change across 3 clearly separable concerns:
+    (1) check-taxonomy.md — dead_symbol and test_coverage strategy additions,
+    (2) inspector.md — cold-start probe, loop replacement, flag doc, tier header, tool list,
+    (3) inspect/SKILL.md — flag doc and allowed-tools update,
+    (4) CHANGELOG.md — unreleased entry,
+    (5) README.md — feature list and flag doc.
+    No two agents need conflicting modifications to the same file; taxonomy and inspector
+    changes are in separate files; SKILL.md, CHANGELOG, and README are also distinct.
+
+    Investigation-first items: none. All changes are additive documentation and strategy
+    text. No root cause analysis required.
+
+    Interface discoverability: the new tools (mcp__lsp__get_change_impact,
+    mcp__lsp__get_cross_repo_references) have defined return shapes described in the feature
+    spec. The taxonomy and inspector strategy text references specific fields (affected_symbols,
+    test_callers, non_test_callers). These are fully specifiable before implementation.
+
+    Pre-implementation status: all five items are TODO — none are partially or fully
+    implemented in the current codebase.
+
+    Parallelization value: 5 markdown/text files, no build/test cycle. Coordination value
+    is moderate — keeping the tier numbering and field names consistent across taxonomy,
+    inspector, and SKILL.md requires interface contracts. Speed savings over sequential are
+    marginal (docs edits), but the IMPL doc provides audit trail and consistency enforcement.
+    Verdict: SUITABLE WITH CAVEATS (coordination value, not speed).
+
+    Estimated times:
+    - Scout phase: ~10 min
+    - Agent execution: ~15 min (3 agents × ~5 min avg, accounting for partial parallelism)
+    - Merge & verification: ~3 min
+    Total SAW time: ~28 min
+    Sequential baseline: ~20 min
+    Recommendation: Marginal speed gains; proceed for coordination value and consistency enforcement.
+test_command: none
+lint_command: none
+file_ownership:
+    - file: inspect/references/check-taxonomy.md
+      agent: A
+      wave: 1
+      action: modify
+    - file: inspector.md
+      agent: B
+      wave: 1
+      action: modify
+    - file: inspect/SKILL.md
+      agent: C
+      wave: 1
+      action: modify
+    - file: CHANGELOG.md
+      agent: D
+      wave: 2
+      action: modify
+      depends_on:
+        - A
+        - B
+        - C
+    - file: README.md
+      agent: D
+      wave: 2
+      action: modify
+      depends_on:
+        - A
+        - B
+        - C
+interface_contracts:
+    - name: Tier1A_ChangeImpact_Response
+      description: Shape of the mcp__lsp__get_change_impact response used by dead_symbol and test_coverage checks. Both taxonomy and inspector must reference the same field names.
+      definition: |
+        {
+          "affected_symbols": [
+            {
+              "name": "<symbol name>",
+              "file": "<absolute path>",
+              "line": <int>,
+              "non_test_callers": <int>,
+              "test_callers": <int>
+            }
+          ]
+        }
+        Classification rules (binding across all agents):
+          dead:      non_test_callers == 0 AND test_callers == 0
+          test-only: non_test_callers == 0 AND test_callers > 0
+          live:      non_test_callers > 0
+      location: inspect/references/check-taxonomy.md
+    - name: Tier1A_CrossRepoRefs_Call
+      description: Signature for mcp__lsp__get_cross_repo_references call used in cross_repo_dead_symbol extension and inspector --consumer-repos flag.
+      definition: |
+        mcp__lsp__get_cross_repo_references(
+          symbol_file: str,   # absolute path to the file containing the symbol
+          line: int,          # 1-based line of the symbol definition
+          column: int,        # 1-based column of the symbol definition
+          consumer_roots: list[str]  # absolute paths of consumer repo roots
+        ) -> { "references": [ { "file": str, "line": int, "repo_root": str } ] }
+      location: inspect/references/check-taxonomy.md
+    - name: TierLabel_Header
+      description: Standard tier label strings used in the report header and in strategy fallback annotations. Both inspector.md and check-taxonomy.md must use these exact strings for consistency.
+      definition: |
+        "LSP Tier: 1A (get_change_impact)"
+        "LSP Tier: 1B (get_references)"
+        "LSP Tier: 2 (built-in LSP)"
+        "LSP Tier: 3 (Grep)"
+        Annotation on per-finding fallback (unchanged from existing):
+        "[LSP unavailable — Grep fallback, reduced confidence]"
+        New annotation for Tier 1A findings:
+        "[LSP Tier 1A — get_change_impact: N non-test callers, M test callers]"
+      location: inspector.md
+waves:
+    - number: 1
+      agents:
+        - id: A
+          task: |
+            ## Agent A: Update check-taxonomy.md with Tier 1A strategies
+
+            File to modify: `inspect/references/check-taxonomy.md`
+
+            ### What to implement
+
+            **1. dead_symbol check — add Tier 1A strategy**
+
+            The current tool strategy starts at step 1 (Grep for position) then step 2
+            (mcp__lsp__get_references). Insert a new Tier 1A step between steps 1 and 2.
+
+            Locate this exact text (the start of the dead_symbol tool strategy block):
+            ```
+            **Tool strategy:**
+            1. Locate the symbol definition with Grep to get exact file:line:character
+            2. **REQUIRED — call `mcp__lsp__get_references` with the exact file_path, line, and character from step 1.** A dead_symbol finding is invalid without this call.
+            3. If `mcp__lsp__get_references` errors or is unavailable: fall back to Grep across the full repo — mark finding as `[LSP unavailable — Grep fallback, reduced confidence]`
+            4. Zero references outside the definition site = dead. Report the LSP result verbatim: `[LSP findReferences: N references]`
+            ```
+
+            Replace with the following (Tier 1A above Tier 1B):
+            ```
+            **Tool strategy:**
+            1. Locate the symbol definition with Grep to get exact file:line:character
+            2. **Tier 1A (preferred) — call `mcp__lsp__get_change_impact(changed_files=[file], include_transitive=false)`.** Returns `affected_symbols` with per-symbol `non_test_callers` and `test_callers` counts for all exported symbols in the file at once.
+               - `non_test_callers == 0 AND test_callers == 0` → dead
+               - `non_test_callers == 0 AND test_callers > 0` → test-only (warning, not dead)
+               - Annotate: `[LSP Tier 1A — get_change_impact: N non-test callers, M test callers]`
+               - If `mcp__lsp__get_change_impact` is unavailable or errors: proceed to Tier 1B.
+            3. **Tier 1B (fallback) — call `mcp__lsp__get_references` with the exact file_path, line, and character from step 1.** A dead_symbol finding is invalid without this call (either Tier 1A or Tier 1B must succeed).
+            4. **If `mcp__lsp__get_references` also errors or is unavailable:** fall back to Grep across the full repo — mark finding as `[LSP unavailable — Grep fallback, reduced confidence]`
+            5. Zero references outside the definition site = dead. Report the LSP result verbatim: `[LSP findReferences: N references]`
+
+            **Optional cross-repo extension:** If `consumer_roots` are provided (via `--consumer-repos` flag), after a symbol is classified dead or test-only by Tier 1A/1B, call `mcp__lsp__get_cross_repo_references(symbol_file, line, column, consumer_roots)`. If any references are found in consumer repos, reclassify as live and annotate: `[cross-repo live — N references in consumer repos]`.
+            ```
+
+            **2. test_coverage check — add Tier 1A strategy**
+
+            Locate this exact text (the start of the test_coverage tool strategy block):
+            ```
+            **Tool strategy:**
+            1. Enumerate exported symbols in the area with Grep (`^func [A-Z]`, `^type [A-Z]`, etc.)
+            2. For each symbol, search test files (`*_test.go`, `*.test.ts`, `test_*.py`, etc.) for its name with Grep
+            3. **REQUIRED — call `mcp__lsp__get_references` on the symbol definition position to confirm whether test files are callers.** Grep misses aliased calls; LSP gives ground truth.
+            4. Flag symbols with zero test references. Report `[LSP findReferences: N references, M in test files]`
+            ```
+
+            Replace with:
+            ```
+            **Tool strategy:**
+            1. Enumerate exported symbols in the area with Grep (`^func [A-Z]`, `^type [A-Z]`, etc.)
+            2. **Tier 1A (preferred) — call `mcp__lsp__get_change_impact(changed_files=[file], include_transitive=false)` per file.** Use the `test_callers` field for each symbol — this includes enclosing test function names, more precise than Grep. Symbols with `test_callers == 0` lack test coverage. Annotate: `[LSP Tier 1A — get_change_impact: M test callers]`. If unavailable, proceed to Tier 1B.
+            3. **Tier 1B (fallback) — call `mcp__lsp__get_references` on the symbol definition position** to confirm whether test files are callers. Grep misses aliased calls; LSP gives ground truth.
+            4. **Grep fallback:** if both Tier 1A and Tier 1B are unavailable, search test files (`*_test.go`, `*.test.ts`, `test_*.py`, etc.) for the symbol name with Grep. Mark as `[LSP unavailable — Grep fallback, reduced confidence]`.
+            5. Flag symbols with zero test references. Report `[LSP findReferences: N references, M in test files]`
+            ```
+
+            **3. Add new `cross_repo_dead_symbol` check at the end of the file**
+
+            Append the following new check section after `init_side_effects`:
+            ```
+            ---
+
+            ### `cross_repo_dead_symbol`
+            A symbol appears dead within its own repo but may be consumed by external repos that are not indexed by the local LSP server. Only applicable when `--consumer-repos` is provided.
+
+            **Tool strategy:**
+            1. Identify symbols classified as dead or test-only by `dead_symbol` check
+            2. **REQUIRED — call `mcp__lsp__get_cross_repo_references(symbol_file, line, column, consumer_roots)` for each candidate.** `consumer_roots` comes from the `--consumer-repos` flag (comma-separated list of absolute repo root paths).
+            3. If any references are returned from consumer repos: reclassify as live. Annotate: `[cross-repo live — N references in consumer repos]`. Remove from dead_symbol report.
+            4. If zero cross-repo references: confirm dead across all known consumers. Annotate: `[cross-repo verified dead — checked N consumer repos]`.
+            5. If `mcp__lsp__get_cross_repo_references` is unavailable or errors: skip cross-repo check. Note in "Not Checked — Tooling Constraints" section.
+
+            **Severity:** inherited from the underlying dead_symbol finding. Cross-repo verification upgrades confidence, not severity.
+
+            **Note:** This check only runs when `--consumer-repos` is provided. It does not appear in reports when the flag is absent.
+            ```
+
+            ### Verification gate
+            After editing:
+            1. `grep -c 'get_change_impact' inspect/references/check-taxonomy.md` — expect ≥ 4
+            2. `grep -c 'Tier 1A' inspect/references/check-taxonomy.md` — expect ≥ 4
+            3. `grep -c 'cross_repo_dead_symbol' inspect/references/check-taxonomy.md` — expect ≥ 2
+            4. `grep -c 'get_cross_repo_references' inspect/references/check-taxonomy.md` — expect ≥ 2
+            5. Verify Tier 2 (built-in LSP) and Tier 3 (Grep) fallback paths still present in dead_symbol and test_coverage — nothing removed, only added above.
+
+            ### Constraints
+            - Do NOT remove or alter the existing Tier 1B (mcp__lsp__get_references) steps — they must remain as fallback.
+            - Do NOT modify any check type other than dead_symbol, test_coverage (add Tier 1A), and the new cross_repo_dead_symbol (append).
+            - Do NOT touch inspector.md, SKILL.md, CHANGELOG.md, or README.md — those are owned by other agents.
+          files:
+            - inspect/references/check-taxonomy.md
+        - id: B
+          task: |
+            ## Agent B: Update inspector.md with Tier 1A probe, flag, and tier header
+
+            File to modify: `inspector.md`
+
+            ### What to implement
+
+            **1. Add mcp__lsp__get_change_impact and mcp__lsp__get_cross_repo_references to the tools frontmatter**
+
+            Locate the frontmatter tools line (line 4 of the file):
+            ```
+            tools: Read, Glob, Grep, Bash, LSP, Write, mcp__lsp__start_lsp, mcp__lsp__open_document, mcp__lsp__get_diagnostics, mcp__lsp__get_references, mcp__lsp__get_info_on_location, mcp__lsp__get_document_symbols, mcp__lsp__get_workspace_symbols, mcp__lsp__call_hierarchy, mcp__lsp__go_to_definition, mcp__lsp__go_to_implementation, mcp__lsp__go_to_type_definition, mcp__lsp__get_signature_help, mcp__lsp__get_semantic_tokens
+            ```
+
+            Add `mcp__lsp__get_change_impact, mcp__lsp__get_cross_repo_references` to the end of the tools list (before the closing of the line). The new line should be:
+            ```
+            tools: Read, Glob, Grep, Bash, LSP, Write, mcp__lsp__start_lsp, mcp__lsp__open_document, mcp__lsp__get_diagnostics, mcp__lsp__get_references, mcp__lsp__get_info_on_location, mcp__lsp__get_document_symbols, mcp__lsp__get_workspace_symbols, mcp__lsp__call_hierarchy, mcp__lsp__go_to_definition, mcp__lsp__go_to_implementation, mcp__lsp__go_to_type_definition, mcp__lsp__get_signature_help, mcp__lsp__get_semantic_tokens, mcp__lsp__get_change_impact, mcp__lsp__get_cross_repo_references
+            ```
+
+            **2. Add Tier 1A cold-start probe to LSP Startup Sequence**
+
+            Locate this exact text (end of the LSP Startup Sequence section, just before "## LSP Verification Gate"):
+            ```
+            > **Note:** If you consistently get workspace mismatch errors, ask the operator to run `mcp__lsp__restart_lsp_server` manually between audit sessions to repoint the server.
+            ```
+
+            Insert the following block immediately after that line (before the blank line leading into "## LSP Verification Gate"):
+            ```
+
+            **Step 4 (Tier 1A probe):** After the warm-up check succeeds, attempt a Tier 1A availability probe:
+            - Call `mcp__lsp__get_change_impact(changed_files=[<any_source_file_in_workspace>], include_transitive=false)`
+            - If it returns without error: record internally "Tier 1A available". Use `get_change_impact` per file for `dead_symbol` and `test_coverage` checks (replacing the per-symbol `get_references` loop when processing whole files).
+            - If it errors or is unavailable: record "Tier 1B only". Fall back to per-symbol `mcp__lsp__get_references` loop as before.
+
+            The probe result determines which loop runs during auditing — it does NOT block startup. If the probe errors, proceed with Tier 1B normally.
+            ```
+
+            **3. Add --consumer-repos flag documentation**
+
+            Locate this exact text (in the ## Input section):
+            ```
+            ## Input
+
+            Areas may be paths, packages, or descriptions. Flags:
+            - `--checks <type1>,<type2>` — run only these check types
+            - `--output <path>` — write report to file (must be under `inspections/` or end with `-inspection.md` / `-inspection.json`)
+            - `--json` — emit structured JSON
+            ```
+
+            Replace with:
+            ```
+            ## Input
+
+            Areas may be paths, packages, or descriptions. Flags:
+            - `--checks <type1>,<type2>` — run only these check types
+            - `--output <path>` — write report to file (must be under `inspections/` or end with `-inspection.md` / `-inspection.json`)
+            - `--json` — emit structured JSON
+            - `--consumer-repos <root1>,<root2>` — optional comma-separated list of consumer repo absolute paths. When provided, symbols classified as dead by `dead_symbol` are verified against consumer repos via `mcp__lsp__get_cross_repo_references` before being reported as dead. Activates the `cross_repo_dead_symbol` check.
+            ```
+
+            **4. Update report header in ## Execution to show active tier**
+
+            Locate this exact text (in the ## Execution section, step 4):
+            ```
+            4. When ready to write the report, read `inspect/references/output-format.md`
+            ```
+
+            Replace with:
+            ```
+            4. When ready to write the report, read `inspect/references/output-format.md`
+
+            **Report tier header (required):** The report Summary section must include which LSP tier was active:
+            - `LSP Tier: 1A (get_change_impact)` — if the Tier 1A probe succeeded
+            - `LSP Tier: 1B (get_references)` — if Tier 1A was unavailable but mcp__lsp__get_references worked
+            - `LSP Tier: 2 (built-in LSP)` — if mcp__lsp__* tools failed and the built-in LSP tool was used
+            - `LSP Tier: 3 (Grep)` — if all LSP surfaces were unavailable
+            ```
+
+            ### Verification gate
+            After editing:
+            1. `grep -c 'get_change_impact' inspector.md` — expect ≥ 4
+            2. `grep -c 'get_cross_repo_references' inspector.md` — expect ≥ 1
+            3. `grep -c 'consumer-repos' inspector.md` — expect ≥ 1
+            4. `grep -c 'Tier 1A' inspector.md` — expect ≥ 3
+            5. `grep -c 'LSP Tier:' inspector.md` — expect ≥ 4 (the four tier label strings in the report header block)
+            6. `grep 'mcp__lsp__get_change_impact' inspector.md | grep 'tools:'` — confirm the tool appears in the frontmatter tools line
+
+            ### Constraints
+            - Do NOT modify the Tier 2 or Tier 3 fallback paths — they must remain intact.
+            - Do NOT remove `mcp__lsp__get_references` from the tools list or from any instruction — it remains as Tier 1B.
+            - Do NOT touch check-taxonomy.md, SKILL.md, CHANGELOG.md, or README.md.
+            - Do NOT add mcp__lsp__restart_lsp_server to the tools list — it is explicitly prohibited in the agent body text.
+          files:
+            - inspector.md
+        - id: C
+          task: |
+            ## Agent C: Update inspect/SKILL.md with --consumer-repos flag and Tier 1A tools
+
+            File to modify: `inspect/SKILL.md`
+
+            ### What to implement
+
+            **1. Add mcp__lsp__get_change_impact and mcp__lsp__get_cross_repo_references to allowed-tools**
+
+            Locate this exact text in the SKILL.md frontmatter:
+            ```
+            allowed-tools: Agent(subagent_type=inspector)
+            ```
+
+            Replace with:
+            ```
+            allowed-tools: Agent(subagent_type=inspector), mcp__lsp__get_change_impact, mcp__lsp__get_cross_repo_references
+            ```
+
+            **2. Add --consumer-repos flag to the ## Usage section**
+
+            Locate this exact text:
+            ```
+            **Flags:**
+            - `--json` — emit structured JSON instead of markdown (machine-readable, enables downstream tooling)
+            - `--output <path>` — persist report to disk; path must be under `inspections/` or end in
+              `-inspection.md` / `-inspection.json`. Example: `--output docs/inspections/2026-04-04.md`
+            - `--checks <type1>,<type2>` — apply only the listed check types, skipping others. Example:
+              `--checks dead_symbol,layer_violation`
+            ```
+
+            Replace with:
+            ```
+            **Flags:**
+            - `--json` — emit structured JSON instead of markdown (machine-readable, enables downstream tooling)
+            - `--output <path>` — persist report to disk; path must be under `inspections/` or end in
+              `-inspection.md` / `-inspection.json`. Example: `--output docs/inspections/2026-04-04.md`
+            - `--checks <type1>,<type2>` — apply only the listed check types, skipping others. Example:
+              `--checks dead_symbol,layer_violation`
+            - `--consumer-repos <root1>,<root2>` — optional comma-separated list of consumer repo absolute
+              paths. Enables cross-repo dead symbol verification: symbols classified as dead locally are
+              checked against consumer repos via `mcp__lsp__get_cross_repo_references` before being reported.
+              Activates the `cross_repo_dead_symbol` check type.
+            ```
+
+            **3. Update description frontmatter to mention Tier 1A batch analysis**
+
+            Locate this exact text (the description field in frontmatter):
+            ```
+            description: Launch a code quality inspector agent to audit defined areas of a codebase. Language-agnostic. Applies a fixed check taxonomy — dead symbols, layer violations, scope overload, coverage gaps, silent failures, duplicate semantics, cross-field consistency, missing tests on exported symbols, unwrapped errors, doc drift, interface saturation, unrecovered panics, context propagation breaks, and init side effects — using LSP-first tool strategies. Returns a severity-tiered findings report with per-finding confidence levels. Supports --json for structured output, --output for persistence, and --checks to target specific check types. Use when auditing files, packages, or cross-cutting concerns for any of these patterns.
+            ```
+
+            Replace with:
+            ```
+            description: Launch a code quality inspector agent to audit defined areas of a codebase. Language-agnostic. Applies a fixed check taxonomy — dead symbols, layer violations, scope overload, coverage gaps, silent failures, duplicate semantics, cross-field consistency, missing tests on exported symbols, unwrapped errors, doc drift, interface saturation, unrecovered panics, context propagation breaks, and init side effects — using LSP-first tool strategies with Tier 1A batch analysis via mcp__lsp__get_change_impact. Returns a severity-tiered findings report with per-finding confidence levels and active LSP tier annotation. Supports --json for structured output, --output for persistence, --checks to target specific check types, and --consumer-repos for cross-repo dead symbol verification. Use when auditing files, packages, or cross-cutting concerns for any of these patterns.
+            ```
+
+            **4. Update the What it checks table to mention Tier 1A for dead_symbol and test_coverage**
+
+            Locate this exact text in the What it checks table:
+            ```
+            | `dead_symbol` | Defined but never referenced (uses `mcp__lsp__get_references` → high confidence; Grep fallback → low confidence) |
+            ```
+
+            Replace with:
+            ```
+            | `dead_symbol` | Defined but never referenced (Tier 1A: `mcp__lsp__get_change_impact` batch → high confidence; Tier 1B: `mcp__lsp__get_references` → high confidence; Grep fallback → low confidence) |
+            ```
+
+            Locate this exact text in the What it checks table:
+            ```
+            | `test_coverage` | Exported symbol with no test references |
+            ```
+
+            Replace with:
+            ```
+            | `test_coverage` | Exported symbol with no test references (Tier 1A: `mcp__lsp__get_change_impact` test_callers field → more precise than Grep; Tier 1B: `mcp__lsp__get_references`; Grep fallback) |
+            ```
+
+            **5. Update the LSP enforcement instructions block in inspect/SKILL.md**
+
+            The ## Execution section of `inspect/SKILL.md` contains an LSP enforcement block
+            that references the per-symbol `get_references` pattern. Update it to note the Tier 1A preference.
+
+            Locate this exact text in `inspect/SKILL.md`:
+            ```
+            > **1. `mcp__lsp__get_references` (preferred for `dead_symbol`):**
+            > Call this for all reference lookups. Returns 1-based locations.
+            > Example: `mcp__lsp__get_references(file_path="/abs/path/file.go", language_id="go", line=22, column=6)`
+            > Zero results = dead symbol (high confidence). If the call errors, fall back to option 2.
+            ```
+
+            Replace with:
+            ```
+            > **1A. `mcp__lsp__get_change_impact` (Tier 1A — batch, preferred for `dead_symbol` and `test_coverage`):**
+            > Call once per file; returns all exported symbols with `non_test_callers` and `test_callers` counts.
+            > Example: `mcp__lsp__get_change_impact(changed_files=["/abs/path/file.go"], include_transitive=false)`
+            > `non_test_callers == 0 AND test_callers == 0` → dead. `non_test_callers == 0 AND test_callers > 0` → test-only.
+            > If unavailable or errors: proceed to Tier 1B.
+            >
+            > **1B. `mcp__lsp__get_references` (Tier 1B — per-symbol fallback for `dead_symbol`):**
+            > Call this for per-symbol reference lookups. Returns 1-based locations.
+            > Example: `mcp__lsp__get_references(file_path="/abs/path/file.go", language_id="go", line=22, column=6)`
+            > Zero results = dead symbol (high confidence). If the call errors, fall back to option 2.
+            ```
+
+            ### Verification gate
+            After editing:
+            1. `grep -c 'get_change_impact' inspect/SKILL.md` — expect ≥ 4
+            2. `grep -c 'consumer-repos' inspect/SKILL.md` — expect ≥ 1
+            3. `grep -c 'Tier 1A' inspect/SKILL.md` — expect ≥ 3
+            4. `grep 'allowed-tools' inspect/SKILL.md` — confirm mcp__lsp__get_change_impact and mcp__lsp__get_cross_repo_references appear
+
+            ### Constraints
+            - Do NOT modify inspector.md or check-taxonomy.md — those are owned by Agents A and B.
+            - Do NOT alter CHANGELOG.md or README.md — owned by Agent D.
+            - Do NOT change the argument-hint, metadata, schema, validator, or user-invocable frontmatter fields.
+          files:
+            - inspect/SKILL.md
+    - number: 2
+      agents:
+        - id: D
+          task: |
+            ## Agent D: Update CHANGELOG.md and README.md
+
+            Files to modify:
+            - `CHANGELOG.md`
+            - `README.md`
+
+            ### What to implement
+
+            **CHANGELOG.md — add Unreleased entry for Tier 1A tools**
+
+            Locate this exact text at the top of the Unreleased section:
+            ```
+            ## [Unreleased]
+
+            ### Fixed
+            - **LSP cold-start sequence in `/inspect` launch instructions**
+            ```
+
+            Insert a new `### Added` block immediately before `### Fixed`:
+            ```
+            ### Added
+            - **Tier 1A LSP strategy — `mcp__lsp__get_change_impact` for batch dead-symbol and test-coverage analysis** — `dead_symbol` and `test_coverage` checks now try `mcp__lsp__get_change_impact(changed_files=[file], include_transitive=false)` before falling back to per-symbol `mcp__lsp__get_references`. Processes all exported symbols in a file in a single call; returns `non_test_callers` and `test_callers` per symbol. Eliminates N-call per-symbol loop when Tier 1A is available, improving audit speed on files with many exports.
+            - **`cross_repo_dead_symbol` check** — new check type activated by `--consumer-repos` flag. Symbols classified as dead locally are verified against consumer repo roots via `mcp__lsp__get_cross_repo_references` before being reported as dead. Symbols found in consumer repos are reclassified as live and annotated `[cross-repo live — N references in consumer repos]`.
+            - **`--consumer-repos <root,...>` flag** — optional comma-separated list of consumer repo absolute paths. Enables cross-repo dead symbol verification in `dead_symbol` and activates `cross_repo_dead_symbol` check. No effect when absent.
+            - **LSP tier header in report summary** — the report Summary section now shows which LSP tier was active: `LSP Tier: 1A (get_change_impact)`, `LSP Tier: 1B (get_references)`, `LSP Tier: 2 (built-in LSP)`, or `LSP Tier: 3 (Grep)`.
+            - **Tier 1A cold-start probe** — inspector performs a probe call to `mcp__lsp__get_change_impact` after LSP warm-up; records availability result before beginning checks. Probe failure is non-fatal; falls back to Tier 1B automatically.
+            - Added `mcp__lsp__get_change_impact` and `mcp__lsp__get_cross_repo_references` to agent tools frontmatter and SKILL.md allowed-tools.
+
+            ```
+
+            **README.md — update Features section and document --consumer-repos**
+
+            Locate this exact text in the Features section:
+            ```
+            - **LSP-first** — symbol-level checks use `mcp__lsp__*` tools before falling back to Grep; every finding is annotated with its source tool and confidence level
+            ```
+
+            Replace with:
+            ```
+            - **LSP-first with Tier 1A batch analysis** — `dead_symbol` and `test_coverage` use `mcp__lsp__get_change_impact` for whole-file batch symbol analysis before falling back to per-symbol `mcp__lsp__get_references` (Tier 1B), built-in LSP (Tier 2), or Grep (Tier 3); every finding is annotated with its source tool, confidence level, and active LSP tier
+            ```
+
+            Locate this exact text in the Features section:
+            ```
+            - **Targeted audits** — `--checks dead_symbol,error_wrapping` to run specific check types only
+            ```
+
+            Replace with:
+            ```
+            - **Targeted audits** — `--checks dead_symbol,error_wrapping` to run specific check types only
+            - **Cross-repo dead symbol verification** — `--consumer-repos /path/to/consumer1,/path/to/consumer2` checks symbols against external consumer repos before classifying them as dead; activates the `cross_repo_dead_symbol` check
+            ```
+
+            Also add `--consumer-repos` to the Usage block. Locate:
+            ```
+            ## Usage
+
+            ```
+            /inspect <area> [<area2> ...] [--checks <types>] [--output <path>] [--json]
+            ```
+            ```
+
+            Replace with:
+            ```
+            ## Usage
+
+            ```
+            /inspect <area> [<area2> ...] [--checks <types>] [--output <path>] [--json] [--consumer-repos <root,...>]
+            ```
+            ```
+
+            ### Verification gate
+            After editing:
+            1. `grep -c 'get_change_impact' CHANGELOG.md` — expect ≥ 2
+            2. `grep -c 'consumer-repos' CHANGELOG.md` — expect ≥ 2
+            3. `grep -c 'Tier 1A' CHANGELOG.md` — expect ≥ 3
+            4. `grep -c 'consumer-repos' README.md` — expect ≥ 2
+            5. `grep -c 'get_change_impact' README.md` — expect ≥ 1
+            6. Confirm `### Added` block appears before `### Fixed` in the Unreleased section of CHANGELOG.md:
+               `grep -n 'Added\|Fixed' CHANGELOG.md | head -4`
+
+            ### Constraints
+            - Do NOT modify check-taxonomy.md, inspector.md, or SKILL.md — those are owned by Agents A, B, and C.
+            - Do NOT add a new `## [Unreleased]` section — insert the `### Added` block into the existing one.
+            - Do NOT alter any existing `### Fixed` or `### Changed` entries.
+          files:
+            - CHANGELOG.md
+            - README.md
+          dependencies:
+            - A
+            - B
+            - C
+quality_gates:
+    level: standard
+    gates:
+        - type: custom
+          command: grep -c 'get_change_impact' /Users/dayna.blackwell/workspace/code/agentskills-code-inspector/inspect/references/check-taxonomy.md
+          required: true
+pre_mortem:
+    overall_risk: low
+    rows:
+        - scenario: Agent A or B uses slightly different field names for get_change_impact response (e.g. "testCallers" vs "test_callers") causing inconsistency between taxonomy and inspector instructions.
+          likelihood: medium
+          impact: medium
+          mitigation: Interface contract TierLabel_Header and Tier1A_ChangeImpact_Response define the exact field names binding on both agents. Both agent prompts quote these field names verbatim. Reviewer should grep for consistency after wave completes.
+        - scenario: Agent B accidentally removes mcp__lsp__get_references from the tools frontmatter when adding the new tools, breaking Tier 1B fallback.
+          likelihood: low
+          impact: high
+          mitigation: Agent B constraints explicitly state "Do NOT remove mcp__lsp__get_references from the tools list." Verification gate step 6 checks for the tool in frontmatter.
+        - scenario: Agent B adds mcp__lsp__restart_lsp_server to the tools list while updating the frontmatter, violating the explicit prohibition documented in the agent body.
+          likelihood: low
+          impact: medium
+          mitigation: Agent B constraints explicitly call this out. The tool is not in the new tools list in the interface contract. Reviewer should verify it is absent after wave completes.
+        - scenario: 'Agent D writes the CHANGELOG ### Added block after ### Fixed instead of before, violating keep-a-changelog ordering convention.'
+          likelihood: medium
+          impact: low
+          mitigation: 'Agent D verification gate step 6 explicitly checks ordering with grep -n ''Added\|Fixed'' | head -4. The text anchor in the task description also shows exact insertion point relative to ### Fixed.'
+        - scenario: The check-taxonomy.md Tier 1A steps for dead_symbol renumber the fallback steps such that the final numbering is inconsistent or skips a number.
+          likelihood: low
+          impact: low
+          mitigation: Agent A task provides the full replacement block verbatim with correct numbering (steps 1-5 for dead_symbol, steps 1-5 for test_coverage). Agent should paste the block as-is rather than rewriting.
+critic_report:
+    verdict: PASS
+    agent_reviews:
+        A:
+            agent_id: A
+            verdict: PASS
+        B:
+            agent_id: B
+            verdict: PASS
+        C:
+            agent_id: C
+            verdict: PASS
+        D:
+            agent_id: D
+            verdict: PASS
+    summary: 'Re-review confirms all previous issues are resolved. Agent B''s former item 5 (blockquote anchor in inspector.md) was removed and is no longer present in the brief. Agent C''s item 5 anchor has been trimmed to exactly match inspect/SKILL.md lines 100-103: the four blockquote lines starting with ''> **1. mcp__lsp__get_references (preferred for dead_symbol):**'' through ''> Zero results = dead symbol (high confidence). If the call errors, fall back to option 2.'' The actual SKILL.md contains those lines verbatim with no extra text. All other anchors for Agents A, B, and D were verified against their target files and match exactly. All five files exist as required by their modify actions. No new errors or warnings found.'
+    reviewed_at: "2026-04-10T06:29:32Z"
+    issue_count: 0
+state: SCOUT_PENDING
+original_branch: main
+injection_method: hook
