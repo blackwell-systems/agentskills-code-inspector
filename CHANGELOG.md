@@ -5,6 +5,14 @@ The format is based on Keep a Changelog, Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+- **Tier 1A LSP strategy — `mcp__lsp__get_change_impact` for batch dead-symbol and test-coverage analysis** — `dead_symbol` and `test_coverage` checks now try `mcp__lsp__get_change_impact(changed_files=[file], include_transitive=false)` before falling back to per-symbol `mcp__lsp__get_references`. Processes all exported symbols in a file in a single call; returns `non_test_callers` and `test_callers` per symbol. Eliminates N-call per-symbol loop when Tier 1A is available, improving audit speed on files with many exports.
+- **`cross_repo_dead_symbol` check** — new check type activated by `--consumer-repos` flag. Symbols classified as dead locally are verified against consumer repo roots via `mcp__lsp__get_cross_repo_references` before being reported as dead. Symbols found in consumer repos are reclassified as live and annotated `[cross-repo live — N references in consumer repos]`.
+- **`--consumer-repos <root,...>` flag** — optional comma-separated list of consumer repo absolute paths. Enables cross-repo dead symbol verification in `dead_symbol` and activates `cross_repo_dead_symbol` check. No effect when absent.
+- **LSP tier header in report summary** — the report Summary section now shows which LSP tier was active: `LSP Tier: 1A (get_change_impact)` (Tier 1A batch), `LSP Tier: 1B (get_references)`, `LSP Tier: 2 (built-in LSP)`, or `LSP Tier: 3 (Grep)`.
+- **Tier 1A cold-start probe** — inspector performs a probe call to `mcp__lsp__get_change_impact` after LSP warm-up; records availability result before beginning checks. Probe failure is non-fatal; falls back to Tier 1B automatically.
+- Added `mcp__lsp__get_change_impact` and `mcp__lsp__get_cross_repo_references` to agent tools frontmatter and SKILL.md allowed-tools.
+
 ### Fixed
 - **LSP cold-start sequence in `/inspect` launch instructions** — `start_lsp` alone does not guarantee a usable workspace when gopls is already bound to a prior session's root. The Step 0 sequence now requires three ordered steps before any LSP query: (1) `restart_lsp_server` to clear prior workspace binding, (2) `start_lsp(root_dir=...)` to point at the correct repo, (3) `open_document` on one representative file per audited package (gopls does not index a package until a file in it is opened). A mandatory warm-up check — calling `get_references` on a known-active symbol and verifying it returns ≥ 1 result before proceeding — is also required, matching the pattern established in `/lsp-dead-code`. Without these steps, `get_references` returns "no package metadata" for all internal packages and dead-symbol checks silently fall back to Grep with reduced confidence.
 
