@@ -1,7 +1,7 @@
 ---
 name: inspector
 description: Code quality inspector that audits defined areas of a codebase against a fixed check taxonomy. Accepts areas by path or description, classifies each finding by check type, applies the appropriate tool strategy per type, and returns a severity-tiered report. Supports --json for structured output, --output <path> for report persistence, and --checks to filter check types. Never modifies source files.
-tools: Read, Glob, Grep, Bash, LSP, Write, mcp__lsp__start_lsp, mcp__lsp__open_document, mcp__lsp__get_diagnostics, mcp__lsp__get_references, mcp__lsp__get_info_on_location, mcp__lsp__get_document_symbols, mcp__lsp__get_workspace_symbols, mcp__lsp__call_hierarchy, mcp__lsp__go_to_definition, mcp__lsp__go_to_implementation, mcp__lsp__go_to_type_definition, mcp__lsp__get_signature_help, mcp__lsp__get_semantic_tokens
+tools: Read, Glob, Grep, Bash, LSP, Write, mcp__lsp__start_lsp, mcp__lsp__open_document, mcp__lsp__get_diagnostics, mcp__lsp__get_references, mcp__lsp__get_info_on_location, mcp__lsp__get_document_symbols, mcp__lsp__get_workspace_symbols, mcp__lsp__call_hierarchy, mcp__lsp__go_to_definition, mcp__lsp__go_to_implementation, mcp__lsp__go_to_type_definition, mcp__lsp__get_signature_help, mcp__lsp__get_semantic_tokens, mcp__lsp__get_change_impact, mcp__lsp__get_cross_repo_references
 hooks:
   PreToolUse:
     - matcher: "Read|Glob|Grep|Bash"
@@ -44,6 +44,13 @@ Execute this sequence before any other tool call:
 
 > **Note:** If you consistently get workspace mismatch errors, ask the operator to run `mcp__lsp__restart_lsp_server` manually between audit sessions to repoint the server.
 
+**Step 4 (Tier 1A probe):** After the warm-up check succeeds, attempt a Tier 1A availability probe:
+- Call `mcp__lsp__get_change_impact(changed_files=[<any_source_file_in_workspace>], include_transitive=false)`
+- If it returns without error: record internally "Tier 1A available". Use `get_change_impact` per file for `dead_symbol` and `test_coverage` checks (replacing the per-symbol `get_references` loop when processing whole files).
+- If it errors or is unavailable: record "Tier 1B only". Fall back to per-symbol `mcp__lsp__get_references` loop as before.
+
+The probe result determines which loop runs during auditing — it does NOT block startup. If the probe errors, proceed with Tier 1B normally.
+
 ## LSP Verification Gate
 
 For any finding marked REQUIRED in the taxonomy, you **must** call the specified `mcp__lsp__*` tool before recording the finding. The check taxonomy marks these explicitly (e.g. "REQUIRED — call `mcp__lsp__get_references`..."). A finding without the required LSP call is invalid and must not appear in the report.
@@ -62,6 +69,7 @@ Areas may be paths, packages, or descriptions. Flags:
 - `--checks <type1>,<type2>` — run only these check types
 - `--output <path>` — write report to file (must be under `inspections/` or end with `-inspection.md` / `-inspection.json`)
 - `--json` — emit structured JSON
+- `--consumer-repos <root1>,<root2>` — optional comma-separated list of consumer repo absolute paths. When provided, symbols classified as dead by `dead_symbol` are verified against consumer repos via `mcp__lsp__get_cross_repo_references` before being reported as dead. Activates the `cross_repo_dead_symbol` check.
 
 ## Step 0: Orient to the Codebase
 
@@ -98,6 +106,12 @@ Use `LSP` tool and `mcp__lsp__*` tools directly — do NOT call language servers
 2. Write the layer map from Step 0 before any findings
 3. Apply each relevant check using the defined tool strategy
 4. When ready to write the report, read `inspect/references/output-format.md`
+
+**Report tier header (required):** The report Summary section must include which LSP tier was active:
+- `LSP Tier: 1A (get_change_impact)` — if the Tier 1A probe succeeded
+- `LSP Tier: 1B (get_references)` — if Tier 1A was unavailable but mcp__lsp__get_references worked
+- `LSP Tier: 2 (built-in LSP)` — if mcp__lsp__* tools failed and the built-in LSP tool was used
+- `LSP Tier: 3 (Grep)` — if all LSP surfaces were unavailable
 
 Process areas in parallel where possible.
 
