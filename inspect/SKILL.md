@@ -28,7 +28,7 @@ Areas can be:
 
 **Flags:**
 - `--json` — emit structured JSON instead of markdown (machine-readable, enables downstream tooling)
-- `--output <path>` — persist report to disk; path must be under `inspections/` or end in
+- `--output <path>` — persist report to disk; path must be under `docs/inspections/` or end in
   `-inspection.md` / `-inspection.json`. Example: `--output docs/inspections/2026-04-04.md`
 - `--checks <type1>,<type2>` — apply only the listed check types, skipping others. Example:
   `--checks dead_symbol,layer_violation`
@@ -71,7 +71,7 @@ Launch inspector agent with:
 - Flags: pass through --json, --output, --checks as provided
 - run_in_background: true
 - Instructions: apply the check taxonomy, report findings with severity and file:line citations
-- First instruction to agent: run the Step 0 cold-start sequence below (restart_lsp_server → start_lsp → open_document per package → warm-up check) before any other operation
+- First instruction to agent: run the Step 0 startup sequence below (start_lsp → open_document per package → warm-up check) before any other operation
 ```
 
 **Critical: LSP tool usage.** Include this instruction verbatim in the inspector agent's
@@ -79,15 +79,12 @@ launch prompt — the agent definition alone is not sufficient:
 
 > **LSP enforcement:** You have two LSP tool surfaces. Use them in this priority order:
 >
-> **Step 0 — cold-start sequence (required, do this first, in order):**
+> **Step 0 — startup sequence (required, do this first, in order):**
 >
-> 1. **Restart the server** to clear any prior workspace binding from earlier in the session:
->    `mcp__lsp__restart_lsp_server()`
->
-> 2. **Re-initialize** pointing at the correct repo root:
+> 1. **Initialize** pointing at the correct repo root (`start_lsp` is idempotent — safe to call even if already running):
 >    `mcp__lsp__start_lsp(root_dir="<repo_root>")`
 >
-> 3. **Open one file per package** you plan to audit. gopls does not index a package
+> 2. **Open one file per package** you plan to audit. gopls does not index a package
 >    until at least one file in it is opened. Without this, `get_references` returns
 >    "no package metadata" for all symbols in that package:
 >    ```
@@ -96,7 +93,7 @@ launch prompt — the agent definition alone is not sufficient:
 >    # … one representative file per package being audited
 >    ```
 >
-> 4. **Warm-up check (mandatory before trusting zero-reference results):**
+> 3. **Warm-up check (mandatory before trusting zero-reference results):**
 >    Pick one symbol you know is actively used (e.g. a widely-called function in the
 >    first package). Call `get_references` on it. If it returns `[]`, the workspace
 >    is not yet indexed — wait 3–5 seconds and retry. Do not proceed to dead-symbol

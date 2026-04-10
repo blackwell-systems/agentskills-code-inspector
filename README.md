@@ -13,7 +13,7 @@ Structured code quality audits for AI coding agents. Inspector applies a fixed c
 - **Dual output** — markdown (default) or JSON (`--json`) with deterministic finding IDs for diff-mode comparison across runs
 - **Targeted audits** — `--checks dead_symbol,error_wrapping` to run specific check types only
 - **Cross-repo dead symbol verification** — `--consumer-repos /path/to/consumer1,/path/to/consumer2` checks symbols against external consumer repos before classifying them as dead; activates the `cross_repo_dead_symbol` check
-- **Report persistence** — `--output inspections/audit.md` to write findings to file
+- **Report persistence** — `--output docs/inspections/audit.md` to write findings to file
 
 ## Install
 
@@ -41,7 +41,7 @@ No `settings.json` changes required. Hooks are wired in agent frontmatter.
 ```
 /inspect internal/session/
 /inspect cmd/server.go internal/tools/ --checks dead_symbol,silent_failure
-/inspect . --output inspections/full-audit.md
+/inspect . --output docs/inspections/full-audit.md
 ```
 
 ## Check Types

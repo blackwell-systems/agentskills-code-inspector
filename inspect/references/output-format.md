@@ -75,6 +75,6 @@ and why it failed.]
 
 ## Persistence (`--output <path>`)
 
-Write the report using the Write tool. Path must be under `inspections/` or end with `-inspection.md` / `-inspection.json`. Format determined by `--json` flag.
+Write the report using the Write tool. Path must be under `docs/inspections/` or end with `-inspection.md` / `-inspection.json`. Format determined by `--json` flag.
 
 The "Not Checked" sections are required in all modes — a clean result is only meaningful if the scope is explicit.

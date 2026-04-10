@@ -67,7 +67,7 @@ Do not skip step 2 to save time. LSP verification is the core value of this tool
 
 Areas may be paths, packages, or descriptions. Flags:
 - `--checks <type1>,<type2>` — run only these check types
-- `--output <path>` — write report to file (must be under `inspections/` or end with `-inspection.md` / `-inspection.json`)
+- `--output <path>` — write report to file (must be under `docs/inspections/` or end with `-inspection.md` / `-inspection.json`)
 - `--json` — emit structured JSON
 - `--consumer-repos <root1>,<root2>` — optional comma-separated list of consumer repo absolute paths. When provided, symbols classified as dead by `dead_symbol` are verified against consumer repos via `mcp__lsp__get_cross_repo_references` before being reported as dead. Activates the `cross_repo_dead_symbol` check.
 
