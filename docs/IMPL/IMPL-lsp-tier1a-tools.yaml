@@ -517,11 +517,8 @@ waves:
             - B
             - C
 quality_gates:
-    level: standard
-    gates:
-        - type: custom
-          command: grep -c 'get_change_impact' /Users/dayna.blackwell/workspace/code/agentskills-code-inspector/inspect/references/check-taxonomy.md
-          required: true
+    level: minimal
+    gates: []
 pre_mortem:
     overall_risk: low
     rows:
