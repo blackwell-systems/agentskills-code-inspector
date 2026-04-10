@@ -1,8 +1,8 @@
 ---
 name: inspect
-description: Launch a code quality inspector agent to audit defined areas of a codebase. Language-agnostic. Applies a fixed check taxonomy — dead symbols, layer violations, scope overload, coverage gaps, silent failures, duplicate semantics, cross-field consistency, missing tests on exported symbols, unwrapped errors, doc drift, interface saturation, unrecovered panics, context propagation breaks, and init side effects — using LSP-first tool strategies. Returns a severity-tiered findings report with per-finding confidence levels. Supports --json for structured output, --output for persistence, and --checks to target specific check types. Use when auditing files, packages, or cross-cutting concerns for any of these patterns.
+description: Launch a code quality inspector agent to audit defined areas of a codebase. Language-agnostic. Applies a fixed check taxonomy — dead symbols, layer violations, scope overload, coverage gaps, silent failures, duplicate semantics, cross-field consistency, missing tests on exported symbols, unwrapped errors, doc drift, interface saturation, unrecovered panics, context propagation breaks, and init side effects — using LSP-first tool strategies with Tier 1A batch analysis via mcp__lsp__get_change_impact. Returns a severity-tiered findings report with per-finding confidence levels and active LSP tier annotation. Supports --json for structured output, --output for persistence, --checks to target specific check types, and --consumer-repos for cross-repo dead symbol verification. Use when auditing files, packages, or cross-cutting concerns for any of these patterns.
 compatibility: Designed for Claude Code. Requires an agent runtime that supports subagent delegation.
-allowed-tools: Agent(subagent_type=inspector)
+allowed-tools: Agent(subagent_type=inspector), mcp__lsp__get_change_impact, mcp__lsp__get_cross_repo_references
 argument-hint: "<path-or-description> [<path-or-description> ...] [--json] [--output <path>] [--checks <type1>,<type2>]"
 user-invocable: true
 metadata:
@@ -32,6 +32,10 @@ Areas can be:
   `-inspection.md` / `-inspection.json`. Example: `--output docs/inspections/2026-04-04.md`
 - `--checks <type1>,<type2>` — apply only the listed check types, skipping others. Example:
   `--checks dead_symbol,layer_violation`
+- `--consumer-repos <root1>,<root2>` — optional comma-separated list of consumer repo absolute
+  paths. Enables cross-repo dead symbol verification: symbols classified as dead locally are
+  checked against consumer repos via `mcp__lsp__get_cross_repo_references` before being reported.
+  Activates the `cross_repo_dead_symbol` check type.
 
 ## What it checks
 
@@ -39,14 +43,14 @@ The inspector applies these checks where relevant — you do not need to specify
 
 | Check | What it finds |
 |-------|--------------|
-| `dead_symbol` | Defined but never referenced (uses `mcp__lsp__get_references` → high confidence; Grep fallback → low confidence) |
+| `dead_symbol` | Defined but never referenced (Tier 1A: `mcp__lsp__get_change_impact` batch → high confidence; Tier 1B: `mcp__lsp__get_references` → high confidence; Grep fallback → low confidence) |
 | `layer_violation` | Import crosses an architectural boundary |
 | `scope_analysis` | Function or module doing too many things |
 | `coverage_gap` | Unhandled input, error, or code path |
 | `silent_failure` | Error suppressed rather than returned |
 | `duplicate_semantics` | Two symbols that mean the same thing |
 | `cross_field_consistency` | Related fields with no consistency enforcement |
-| `test_coverage` | Exported symbol with no test references |
+| `test_coverage` | Exported symbol with no test references (Tier 1A: `mcp__lsp__get_change_impact` test_callers field → more precise than Grep; Tier 1B: `mcp__lsp__get_references`; Grep fallback) |
 | `error_wrapping` | Error returned without context (opaque call stack) |
 | `doc_drift` | Function documentation no longer matches its signature |
 | `interface_saturation` | Interface with too many methods; callers use a narrow subset |
@@ -98,8 +102,14 @@ launch prompt — the agent definition alone is not sufficient:
 >    is not yet indexed — wait 3–5 seconds and retry. Do not proceed to dead-symbol
 >    checks until a known-active symbol returns ≥ 1 reference.
 >
-> **1. `mcp__lsp__get_references` (preferred for `dead_symbol`):**
-> Call this for all reference lookups. Returns 1-based locations.
+> **1A. `mcp__lsp__get_change_impact` (Tier 1A — batch, preferred for `dead_symbol` and `test_coverage`):**
+> Call once per file; returns all exported symbols with `non_test_callers` and `test_callers` counts.
+> Example: `mcp__lsp__get_change_impact(changed_files=["/abs/path/file.go"], include_transitive=false)`
+> `non_test_callers == 0 AND test_callers == 0` → dead. `non_test_callers == 0 AND test_callers > 0` → test-only.
+> If unavailable or errors: proceed to Tier 1B.
+>
+> **1B. `mcp__lsp__get_references` (Tier 1B — per-symbol fallback for `dead_symbol`):**
+> Call this for per-symbol reference lookups. Returns 1-based locations.
 > Example: `mcp__lsp__get_references(file_path="/abs/path/file.go", language_id="go", line=22, column=6)`
 > Zero results = dead symbol (high confidence). If the call errors, fall back to option 2.
 >
