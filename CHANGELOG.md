@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, Semantic Versioning.
 ## [Unreleased]
 
 ### Fixed
+- **LSP cold-start sequence in `/inspect` launch instructions** — `start_lsp` alone does not guarantee a usable workspace when gopls is already bound to a prior session's root. The Step 0 sequence now requires three ordered steps before any LSP query: (1) `restart_lsp_server` to clear prior workspace binding, (2) `start_lsp(root_dir=...)` to point at the correct repo, (3) `open_document` on one representative file per audited package (gopls does not index a package until a file in it is opened). A mandatory warm-up check — calling `get_references` on a known-active symbol and verifying it returns ≥ 1 result before proceeding — is also required, matching the pattern established in `/lsp-dead-code`. Without these steps, `get_references` returns "no package metadata" for all internal packages and dead-symbol checks silently fall back to Grep with reduced confidence.
+
+### Changed
 - Rewrote all hooks (`inspector-lsp-gate.sh`, `inspector-lsp-set.sh`, `inspector-lsp-fallback.sh`) to read `agent_type` and `agent_id` from JSON stdin instead of `$CLAUDE_AGENT_ID` env var — the env var is empty when hooks fire from global `settings.json` context; JSON input fields are always populated inside subagent calls
 - Mechanical LSP gate is now active: `PreToolUse` hook blocks `Read/Glob/Grep/Bash` until `mcp__lsp__start_lsp` succeeds; no longer advisory-only
 - Removed gate sentinel file (`/tmp/.inspector-gate-*`) — `agent_type == "inspector"` from JSON input now serves as the identity check directly
