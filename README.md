@@ -8,10 +8,11 @@ Structured code quality audits for AI coding agents. Inspector applies a fixed c
 ## Features
 
 - **14 check types** — dead symbols, layer violations, scope analysis, coverage gaps, silent failures, duplicate semantics, test coverage, error wrapping, doc drift, interface saturation, unrecovered panics, context propagation, init side effects, cross-field consistency
-- **LSP-first** — symbol-level checks use `mcp__lsp__*` tools before falling back to Grep; every finding is annotated with its source tool and confidence level
+- **LSP-first with Tier 1A batch analysis** — `dead_symbol` and `test_coverage` use `mcp__lsp__get_change_impact` for whole-file batch symbol analysis before falling back to per-symbol `mcp__lsp__get_references` (Tier 1B), built-in LSP (Tier 2), or Grep (Tier 3); every finding is annotated with its source tool, confidence level, and active LSP tier
 - **LSP gate hook** — enforced via agent frontmatter hooks; `mcp__lsp__start_lsp` must be called before any file reads
 - **Dual output** — markdown (default) or JSON (`--json`) with deterministic finding IDs for diff-mode comparison across runs
 - **Targeted audits** — `--checks dead_symbol,error_wrapping` to run specific check types only
+- **Cross-repo dead symbol verification** — `--consumer-repos /path/to/consumer1,/path/to/consumer2` checks symbols against external consumer repos before classifying them as dead; activates the `cross_repo_dead_symbol` check
 - **Report persistence** — `--output inspections/audit.md` to write findings to file
 
 ## Install
@@ -34,7 +35,7 @@ No `settings.json` changes required. Hooks are wired in agent frontmatter.
 ## Usage
 
 ```
-/inspect <area> [<area2> ...] [--checks <types>] [--output <path>] [--json]
+/inspect <area> [<area2> ...] [--checks <types>] [--output <path>] [--json] [--consumer-repos <root,...>]
 ```
 
 ```
