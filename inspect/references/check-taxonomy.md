@@ -9,9 +9,16 @@ A symbol is defined but never referenced at runtime.
 
 **Tool strategy:**
 1. Locate the symbol definition with Grep to get exact file:line:character
-2. **REQUIRED — call `mcp__lsp__get_references` with the exact file_path, line, and character from step 1.** A dead_symbol finding is invalid without this call.
-3. If `mcp__lsp__get_references` errors or is unavailable: fall back to Grep across the full repo — mark finding as `[LSP unavailable — Grep fallback, reduced confidence]`
-4. Zero references outside the definition site = dead. Report the LSP result verbatim: `[LSP findReferences: N references]`
+2. **Tier 1A (preferred) — call `mcp__lsp__get_change_impact(changed_files=[file], include_transitive=false)`.** Returns `affected_symbols` with per-symbol `non_test_callers` and `test_callers` counts for all exported symbols in the file at once.
+   - `non_test_callers == 0 AND test_callers == 0` → dead
+   - `non_test_callers == 0 AND test_callers > 0` → test-only (warning, not dead)
+   - Annotate: `[LSP Tier 1A — get_change_impact: N non-test callers, M test callers]`
+   - If `mcp__lsp__get_change_impact` is unavailable or errors: proceed to Tier 1B.
+3. **Tier 1B (fallback) — call `mcp__lsp__get_references` with the exact file_path, line, and character from step 1.** A dead_symbol finding is invalid without this call (either Tier 1A or Tier 1B must succeed).
+4. **If `mcp__lsp__get_references` also errors or is unavailable:** fall back to Grep across the full repo — mark finding as `[LSP unavailable — Grep fallback, reduced confidence]`
+5. Zero references outside the definition site = dead. Report the LSP result verbatim: `[LSP findReferences: N references]`
+
+**Optional cross-repo extension (`cross_repo_dead_symbol`):** If `consumer_roots` are provided (via `--consumer-repos` flag), after a symbol is classified dead or test-only by Tier 1A/1B, call `mcp__lsp__get_cross_repo_references(symbol_file, line, column, consumer_roots)`. If any references are found in consumer repos, reclassify as live and annotate: `[cross-repo live — N references in consumer repos]`.
 
 **Severity:** warning if the symbol has a comment suggesting future use; error otherwise.
 
@@ -99,9 +106,10 @@ An exported symbol (function, method, type) has no corresponding test.
 
 **Tool strategy:**
 1. Enumerate exported symbols in the area with Grep (`^func [A-Z]`, `^type [A-Z]`, etc.)
-2. For each symbol, search test files (`*_test.go`, `*.test.ts`, `test_*.py`, etc.) for its name with Grep
-3. **REQUIRED — call `mcp__lsp__get_references` on the symbol definition position to confirm whether test files are callers.** Grep misses aliased calls; LSP gives ground truth.
-4. Flag symbols with zero test references. Report `[LSP findReferences: N references, M in test files]`
+2. **Tier 1A (preferred) — call `mcp__lsp__get_change_impact(changed_files=[file], include_transitive=false)` per file.** Use the `test_callers` field for each symbol — this includes enclosing test function names, more precise than Grep. Symbols with `test_callers == 0` lack test coverage. Annotate: `[LSP Tier 1A — get_change_impact: M test callers]`. If unavailable, proceed to Tier 1B.
+3. **Tier 1B (fallback) — call `mcp__lsp__get_references` on the symbol definition position** to confirm whether test files are callers. Grep misses aliased calls; LSP gives ground truth.
+4. **Grep fallback:** if both Tier 1A and Tier 1B are unavailable, search test files (`*_test.go`, `*.test.ts`, `test_*.py`, etc.) for the symbol name with Grep. Mark as `[LSP unavailable — Grep fallback, reduced confidence]`.
+5. Flag symbols with zero test references. Report `[LSP findReferences: N references, M in test files]`
 
 **Severity:** error for public API surface (exported and called externally); warning for internal helpers that are exported but only used within the package.
 
@@ -198,3 +206,19 @@ A module initializer performs observable side effects — I/O, global mutation, 
 4. Do not flag: registering constants, building lookup tables from compile-time data, pure deterministic assignments
 
 **Severity:** warning — couples test setup to module import order; error if the side effect can fail at import time with no recovery path.
+
+---
+
+### `cross_repo_dead_symbol`
+A symbol appears dead within its own repo but may be consumed by external repos that are not indexed by the local LSP server. Only applicable when `--consumer-repos` is provided.
+
+**Tool strategy:**
+1. Identify symbols classified as dead or test-only by `dead_symbol` check
+2. **REQUIRED — call `mcp__lsp__get_cross_repo_references(symbol_file, line, column, consumer_roots)` for each candidate.** `consumer_roots` comes from the `--consumer-repos` flag (comma-separated list of absolute repo root paths).
+3. If any references are returned from consumer repos: reclassify as live. Annotate: `[cross-repo live — N references in consumer repos]`. Remove from dead_symbol report.
+4. If zero cross-repo references: confirm dead across all known consumers. Annotate: `[cross-repo verified dead — checked N consumer repos]`.
+5. If `mcp__lsp__get_cross_repo_references` is unavailable or errors: skip cross-repo check. Note in "Not Checked — Tooling Constraints" section.
+
+**Severity:** inherited from the underlying dead_symbol finding. Cross-repo verification upgrades confidence, not severity.
+
+**Note:** This check only runs when `--consumer-repos` is provided. It does not appear in reports when the flag is absent.
