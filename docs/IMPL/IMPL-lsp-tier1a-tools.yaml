@@ -420,6 +420,7 @@ waves:
             - Do NOT change the argument-hint, metadata, schema, validator, or user-invocable frontmatter fields.
           files:
             - inspect/SKILL.md
+      base_commit: 553214a3ed555064cb822b2cdd311b9a52d17866
     - number: 2
       agents:
         - id: D
@@ -519,6 +520,31 @@ waves:
 quality_gates:
     level: quick
     gates: []
+completion_reports:
+    A:
+        status: complete
+        branch: saw/lsp-tier1a-tools/wave1-agent-A
+        commit: "8465115"
+        files_changed:
+            - inspect/references/check-taxonomy.md
+        verification: PASS
+        notes: Added Tier 1A (get_change_impact) strategy to dead_symbol and test_coverage checks. Added cross_repo_dead_symbol check at end of file. All Tier 1B (get_references) and Grep fallback paths preserved. All 4 verification gates pass.
+    B:
+        status: complete
+        branch: saw/lsp-tier1a-tools/wave1-agent-B
+        commit: 0baedda
+        files_changed:
+            - inspector.md
+        verification: PASS
+        notes: 'All 4 edits applied: frontmatter tools line updated, Tier 1A cold-start probe added after startup sequence, --consumer-repos flag documented, report tier header block added to Execution step 4. All 6 grep verification gates pass.'
+    C:
+        status: complete
+        branch: saw/lsp-tier1a-tools/wave1-agent-C
+        commit: 88e7d37
+        files_changed:
+            - inspect/SKILL.md
+        verification: PASS
+        notes: 'All 5 edits applied: allowed-tools updated, description updated, --consumer-repos flag added, dead_symbol and test_coverage table entries updated with Tier 1A, LSP enforcement block updated with Tier 1A/1B split. All 4 verification gates pass (get_change_impact: 6, consumer-repos: 2, Tier 1A: 4, allowed-tools correct).'
 pre_mortem:
     overall_risk: low
     rows:
@@ -560,6 +586,6 @@ critic_report:
     summary: 'Re-review confirms all previous issues are resolved. Agent B''s former item 5 (blockquote anchor in inspector.md) was removed and is no longer present in the brief. Agent C''s item 5 anchor has been trimmed to exactly match inspect/SKILL.md lines 100-103: the four blockquote lines starting with ''> **1. mcp__lsp__get_references (preferred for dead_symbol):**'' through ''> Zero results = dead symbol (high confidence). If the call errors, fall back to option 2.'' The actual SKILL.md contains those lines verbatim with no extra text. All other anchors for Agents A, B, and D were verified against their target files and match exactly. All five files exist as required by their modify actions. No new errors or warnings found.'
     reviewed_at: "2026-04-10T06:29:32Z"
     issue_count: 0
-state: "REVIEWED"
+state: REVIEWED
 original_branch: main
 injection_method: hook
