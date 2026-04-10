@@ -1,7 +1,7 @@
 ---
 name: inspect
 description: Launch a code quality inspector agent to audit defined areas of a codebase. Language-agnostic. Applies a fixed check taxonomy — dead symbols, layer violations, scope overload, coverage gaps, silent failures, duplicate semantics, cross-field consistency, missing tests on exported symbols, unwrapped errors, doc drift, interface saturation, unrecovered panics, context propagation breaks, and init side effects — using LSP-first tool strategies with Tier 1A batch analysis via mcp__lsp__get_change_impact. Returns a severity-tiered findings report with per-finding confidence levels and active LSP tier annotation. Supports --json for structured output, --output for persistence, --checks to target specific check types, and --consumer-repos for cross-repo dead symbol verification. Use when auditing files, packages, or cross-cutting concerns for any of these patterns.
-compatibility: Designed for Claude Code. Requires an agent runtime that supports subagent delegation.
+compatibility: Requires an agent runtime that supports subagent delegation and tool use (e.g. Claude Code).
 allowed-tools: Agent(subagent_type=inspector), mcp__lsp__get_change_impact, mcp__lsp__get_cross_repo_references
 argument-hint: "<path-or-description> [<path-or-description> ...] [--json] [--output <path>] [--checks <type1>,<type2>]"
 user-invocable: true
