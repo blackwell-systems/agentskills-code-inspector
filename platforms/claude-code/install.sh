@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — Installs the inspector agent, skill, and hooks.
+# install.sh — Installs the inspector agent, skill, and hooks for Claude Code.
 #
 # Usage:
 #   ./install.sh             # install
@@ -11,13 +11,14 @@
 
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLATFORM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "${PLATFORM_DIR}/../.." && pwd)"
 AGENTS_DIR="${HOME}/.claude/agents"
 HOOKS_DIR="${HOME}/.claude/agents/hooks"
 SKILLS_DIR="${HOME}/.claude/skills/inspect"
 
 do_install() {
-  echo "Installing inspector agent..."
+  echo "Installing inspector agent (Claude Code)..."
   echo ""
 
   # 1. Agent definition
@@ -30,11 +31,11 @@ do_install() {
   # 2. Hook scripts
   echo "2. Linking hook scripts..."
   mkdir -p "${HOOKS_DIR}"
-  ln -sf "${REPO_DIR}/hooks/inspector-subagent-start.sh" "${HOOKS_DIR}/inspector-subagent-start.sh"
-  ln -sf "${REPO_DIR}/hooks/inspector-lsp-gate.sh"       "${HOOKS_DIR}/inspector-lsp-gate.sh"
-  ln -sf "${REPO_DIR}/hooks/inspector-lsp-set.sh"        "${HOOKS_DIR}/inspector-lsp-set.sh"
-  ln -sf "${REPO_DIR}/hooks/inspector-lsp-fallback.sh"   "${HOOKS_DIR}/inspector-lsp-fallback.sh"
-  chmod +x "${REPO_DIR}/hooks/inspector-subagent-start.sh" "${REPO_DIR}/hooks/inspector-lsp-gate.sh" "${REPO_DIR}/hooks/inspector-lsp-set.sh" "${REPO_DIR}/hooks/inspector-lsp-fallback.sh"
+  ln -sf "${PLATFORM_DIR}/hooks/inspector-subagent-start.sh" "${HOOKS_DIR}/inspector-subagent-start.sh"
+  ln -sf "${PLATFORM_DIR}/hooks/inspector-lsp-gate.sh"       "${HOOKS_DIR}/inspector-lsp-gate.sh"
+  ln -sf "${PLATFORM_DIR}/hooks/inspector-lsp-set.sh"        "${HOOKS_DIR}/inspector-lsp-set.sh"
+  ln -sf "${PLATFORM_DIR}/hooks/inspector-lsp-fallback.sh"   "${HOOKS_DIR}/inspector-lsp-fallback.sh"
+  chmod +x "${PLATFORM_DIR}/hooks/inspector-subagent-start.sh" "${PLATFORM_DIR}/hooks/inspector-lsp-gate.sh" "${PLATFORM_DIR}/hooks/inspector-lsp-set.sh" "${PLATFORM_DIR}/hooks/inspector-lsp-fallback.sh"
   echo "   ${HOOKS_DIR}/inspector-subagent-start.sh"
   echo "   ${HOOKS_DIR}/inspector-lsp-gate.sh"
   echo "   ${HOOKS_DIR}/inspector-lsp-set.sh"
@@ -86,7 +87,7 @@ do_install() {
 }
 
 do_uninstall() {
-  echo "Uninstalling inspector agent..."
+  echo "Uninstalling inspector agent (Claude Code)..."
   echo ""
 
   for f in "${AGENTS_DIR}/inspector.md" "${HOOKS_DIR}/inspector-subagent-start.sh" "${HOOKS_DIR}/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-set.sh" "${HOOKS_DIR}/inspector-lsp-fallback.sh" "${SKILLS_DIR}/SKILL.md" "${SKILLS_DIR}/assets" "${SKILLS_DIR}/scripts" "${SKILLS_DIR}/references"; do

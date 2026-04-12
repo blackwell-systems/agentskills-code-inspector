@@ -29,7 +29,8 @@ Areas can be:
 **Flags:**
 - `--json` — emit structured JSON instead of markdown (machine-readable, enables downstream tooling)
 - `--output <path>` — persist report to disk; path must be under `docs/inspections/` or end in
-  `-inspection.md` / `-inspection.json`. Example: `--output docs/inspections/2026-04-04.md`
+  `-inspection.md` / `-inspection.json`. Example: `--output docs/inspections/2026-04-04.md`.
+  If omitted, defaults to `docs/inspections/<datetime>.md` (e.g. `docs/inspections/2026-04-11T14-32-00.md`).
 - `--checks <type1>,<type2>` — apply only the listed check types, skipping others. Example:
   `--checks dead_symbol,layer_violation`
 - `--consumer-repos <root1>,<root2>` — optional comma-separated list of consumer repo absolute
@@ -80,7 +81,7 @@ touch /tmp/.inspector-lsp-global-ready
 Launch inspector agent with:
 - Areas to inspect: [user's areas]
 - Repo root: [resolve the actual repo root from the area path — e.g. if area is /Users/x/code/my-repo/pkg/foo, repo root is /Users/x/code/my-repo]
-- Flags: pass through --json, --output, --checks as provided
+- Flags: pass through --json, --checks as provided. For --output: if the user provided a path, use it; if omitted, default to `docs/inspections/<YYYY-MM-DDTHH-MM-SS>.md` using the current datetime relative to the repo root
 - run_in_background: true
 - Instructions: apply the check taxonomy, report findings with severity and file:line citations
 - First instruction to agent: DO NOT call mcp__lsp__start_lsp (already running, gate flag is set). Go directly to Step 0 open_document calls, then warm-up check.
