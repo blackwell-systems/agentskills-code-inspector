@@ -17,5 +17,10 @@ AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // ""' 2>/dev/null)
 READY="/tmp/.inspector-lsp-ready-${AGENT_ID}"
 [[ -f "$READY" ]] && exit 0
 
+# Also accept a global ready flag set by the parent session (e.g. when orchestrator
+# pre-warms LSP before launching the inspector agent in background mode).
+GLOBAL_READY="/tmp/.inspector-lsp-global-ready"
+[[ -f "$GLOBAL_READY" ]] && exit 0
+
 echo "BLOCKED: Call mcp__lsp__start_lsp(root_dir=<workspace_root>) before reading any files." >&2
 exit 2
