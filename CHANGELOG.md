@@ -6,6 +6,14 @@ The format is based on Keep a Changelog, Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- **Global LSP ready flag for background agents** — `inspector-lsp-gate.sh` now also accepts `/tmp/.inspector-lsp-global-ready` as a gate-pass signal. Background agents cannot receive interactive MCP tool permission prompts; the parent/orchestrator session must call `mcp__lsp__start_lsp` and `touch /tmp/.inspector-lsp-global-ready` before launching the inspector in the background. The per-agent flag (`/tmp/.inspector-lsp-ready-${AGENT_ID}`) continues to work for foreground agents.
+- **Orchestrator pre-warm instructions in SKILL.md** — `/inspect` skill now documents the parent-session LSP warmup pattern: call `mcp__lsp__start_lsp` in the parent session (which prompts for permission once), then set the global flag so the background agent's gate passes automatically. Also instructs the agent to skip the `start_lsp` call when the global flag is already set.
+
+### Fixed
+- **`install.sh` now symlinks entire subdirectories** — previously linked individual files inside `assets/`, `scripts/`, and `references/`; now symlinks the directories themselves (`ln -s inspect/assets ${SKILLS_DIR}/assets` etc.). New files added to those directories are immediately available without re-running the installer.
+- **`install.sh` is fully idempotent** — uses `rm -rf` before `ln -s` for directory entries. `ln -sfn` cannot replace a real directory with a symlink on macOS; re-running the installer previously failed if any of the three subdirectories had been created as real dirs.
+
+### Added
 - **Tier 1A LSP strategy — `mcp__lsp__get_change_impact` for batch dead-symbol and test-coverage analysis** — `dead_symbol` and `test_coverage` checks now try `mcp__lsp__get_change_impact(changed_files=[file], include_transitive=false)` before falling back to per-symbol `mcp__lsp__get_references`. Processes all exported symbols in a file in a single call; returns `non_test_callers` and `test_callers` per symbol. Eliminates N-call per-symbol loop when Tier 1A is available, improving audit speed on files with many exports.
 - **`cross_repo_dead_symbol` check** — new check type activated by `--consumer-repos` flag. Symbols classified as dead locally are verified against consumer repo roots via `mcp__lsp__get_cross_repo_references` before being reported as dead. Symbols found in consumer repos are reclassified as live and annotated `[cross-repo live — N references in consumer repos]`.
 - **`--consumer-repos <root,...>` flag** — optional comma-separated list of consumer repo absolute paths. Enables cross-repo dead symbol verification in `dead_symbol` and activates `cross_repo_dead_symbol` check. No effect when absent.
