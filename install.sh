@@ -44,10 +44,12 @@ do_install() {
   # 3. Skill files
   echo "3. Linking skill files..."
   mkdir -p "${SKILLS_DIR}"
-  ln -sf "${REPO_DIR}/inspect/SKILL.md"       "${SKILLS_DIR}/SKILL.md"
-  ln -sfn "${REPO_DIR}/inspect/assets"        "${SKILLS_DIR}/assets"
-  ln -sfn "${REPO_DIR}/inspect/scripts"       "${SKILLS_DIR}/scripts"
-  ln -sfn "${REPO_DIR}/inspect/references"    "${SKILLS_DIR}/references"
+  ln -sf "${REPO_DIR}/inspect/SKILL.md" "${SKILLS_DIR}/SKILL.md"
+  # Remove existing entries (symlink or real dir) before re-linking — ensures idempotency
+  for d in assets scripts references; do
+    rm -rf "${SKILLS_DIR:?}/${d}"
+    ln -s "${REPO_DIR}/inspect/${d}" "${SKILLS_DIR}/${d}"
+  done
   chmod +x "${REPO_DIR}/inspect/scripts/validate-report"
   echo "   ${SKILLS_DIR}/SKILL.md"
   echo "   ${SKILLS_DIR}/assets -> ${REPO_DIR}/inspect/assets"
