@@ -5,6 +5,9 @@ The format is based on Keep a Changelog, Semantic Versioning.
 
 ## [Unreleased]
 
+### Changed
+- **Two-layer architecture: `platforms/claude-code/`** — hooks and `install.sh` moved from repo root into `platforms/claude-code/`. Makes the split between the agentskills-standard layer (`inspector.md`, `inspect/`) and the Claude Code platform layer explicit. Future platforms add `platforms/<name>/` without touching the standard layer. `install.sh` updated to use `PLATFORM_DIR` for hook paths and `REPO_DIR` (two levels up) for agent and skill paths.
+
 ### Added
 - **Global LSP ready flag for background agents** — `inspector-lsp-gate.sh` now also accepts `/tmp/.inspector-lsp-global-ready` as a gate-pass signal. Background agents cannot receive interactive MCP tool permission prompts; the parent/orchestrator session must call `mcp__lsp__start_lsp` and `touch /tmp/.inspector-lsp-global-ready` before launching the inspector in the background. The per-agent flag (`/tmp/.inspector-lsp-ready-${AGENT_ID}`) continues to work for foreground agents.
 - **Orchestrator pre-warm instructions in SKILL.md** — `/inspect` skill now documents the parent-session LSP warmup pattern: call `mcp__lsp__start_lsp` in the parent session (which prompts for permission once), then set the global flag so the background agent's gate passes automatically. Also instructs the agent to skip the `start_lsp` call when the global flag is already set.
