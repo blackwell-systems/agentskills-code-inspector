@@ -64,6 +64,18 @@ Launch the inspector agent with the user's areas as input. Pass the current work
 directory as the repo root. **Always set `run_in_background: true`** so the audit runs
 asynchronously and the user can continue working while it runs.
 
+**Pre-flight: warm up LSP in the parent session before launching the agent.** Background
+agents cannot receive interactive permission prompts for MCP tools. Call `mcp__lsp__start_lsp`
+yourself first, then set the global gate flag so the agent can proceed without needing the tool:
+
+```bash
+# 1. Start LSP in the parent session (prompts once for permission — approve it)
+mcp__lsp__start_lsp(root_dir="<repo_root>")
+
+# 2. Set the global ready flag so the inspector gate hook passes for background agents
+touch /tmp/.inspector-lsp-global-ready
+```
+
 ```
 Launch inspector agent with:
 - Areas to inspect: [user's areas]
@@ -71,7 +83,7 @@ Launch inspector agent with:
 - Flags: pass through --json, --output, --checks as provided
 - run_in_background: true
 - Instructions: apply the check taxonomy, report findings with severity and file:line citations
-- First instruction to agent: run the Step 0 startup sequence below (start_lsp → open_document per package → warm-up check) before any other operation
+- First instruction to agent: DO NOT call mcp__lsp__start_lsp (already running, gate flag is set). Go directly to Step 0 open_document calls, then warm-up check.
 ```
 
 **Critical: LSP tool usage.** Include this instruction verbatim in the inspector agent's
