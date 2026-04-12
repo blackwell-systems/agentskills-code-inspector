@@ -13,14 +13,27 @@ Structured code quality audits for AI coding agents. Inspector applies a fixed c
 - **Dual output** — markdown (default) or JSON (`--json`) with deterministic finding IDs for diff-mode comparison across runs
 - **Targeted audits** — `--checks dead_symbol,error_wrapping` to run specific check types only
 - **Cross-repo dead symbol verification** — `--consumer-repos /path/to/consumer1,/path/to/consumer2` checks symbols against external consumer repos before classifying them as dead; activates the `cross_repo_dead_symbol` check
-- **Report persistence** — `--output docs/inspections/audit.md` to write findings to file
+- **Report persistence** — defaults to `docs/inspections/<datetime>.md`; override with `--output`
+
+## Architecture
+
+Inspector is structured in two layers:
+
+| Layer | Contents | Portable? |
+|-------|----------|-----------|
+| **agentskills standard** | `inspector.md`, `inspect/` (SKILL.md, check taxonomy, output format, schema) | Yes — works on any compliant agent runtime |
+| **Platform implementation** | `platforms/<name>/` (hooks, install script) | No — platform-specific lifecycle enforcement |
+
+The standard layer defines what the inspector does. Platform layers define how lifecycle enforcement (LSP gating, cleanup) is wired on a specific runtime. Adding support for a new platform means adding `platforms/<name>/` without touching the standard layer.
 
 ## Install
+
+**Claude Code:**
 
 ```bash
 git clone https://github.com/blackwell-systems/agentskills-code-inspector
 cd agentskills-code-inspector
-./install.sh
+./platforms/claude-code/install.sh
 ```
 
 **Prerequisites:** An agent runtime that supports subagent delegation and tool use (e.g. Claude Code). The [agent-lsp](https://github.com/blackwell-systems/agent-lsp) MCP server is recommended for full LSP capabilities (`call_hierarchy`, `get_diagnostics`, `get_change_impact`, multi-language routing). If unavailable, inspector automatically falls back to the runtime's built-in LSP tool — most checks work fine, a few degrade (`interface_saturation` without call hierarchy). If both LSP tiers fail, Grep is used with reduced-confidence annotations. All 14 checks run in all modes.
