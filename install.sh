@@ -43,24 +43,22 @@ do_install() {
 
   # 3. Skill files
   echo "3. Linking skill files..."
-  mkdir -p "${SKILLS_DIR}/assets" "${SKILLS_DIR}/scripts" "${SKILLS_DIR}/references"
-  ln -sf "${REPO_DIR}/inspect/SKILL.md"                       "${SKILLS_DIR}/SKILL.md"
-  ln -sf "${REPO_DIR}/inspect/assets/schema.json"             "${SKILLS_DIR}/assets/schema.json"
-  ln -sf "${REPO_DIR}/inspect/scripts/validate-report"        "${SKILLS_DIR}/scripts/validate-report"
-  ln -sf "${REPO_DIR}/inspect/references/check-taxonomy.md"   "${SKILLS_DIR}/references/check-taxonomy.md"
-  ln -sf "${REPO_DIR}/inspect/references/output-format.md"    "${SKILLS_DIR}/references/output-format.md"
+  mkdir -p "${SKILLS_DIR}"
+  ln -sf "${REPO_DIR}/inspect/SKILL.md"       "${SKILLS_DIR}/SKILL.md"
+  ln -sfn "${REPO_DIR}/inspect/assets"        "${SKILLS_DIR}/assets"
+  ln -sfn "${REPO_DIR}/inspect/scripts"       "${SKILLS_DIR}/scripts"
+  ln -sfn "${REPO_DIR}/inspect/references"    "${SKILLS_DIR}/references"
   chmod +x "${REPO_DIR}/inspect/scripts/validate-report"
   echo "   ${SKILLS_DIR}/SKILL.md"
-  echo "   ${SKILLS_DIR}/assets/schema.json"
-  echo "   ${SKILLS_DIR}/scripts/validate-report"
-  echo "   ${SKILLS_DIR}/references/check-taxonomy.md"
-  echo "   ${SKILLS_DIR}/references/output-format.md"
+  echo "   ${SKILLS_DIR}/assets -> ${REPO_DIR}/inspect/assets"
+  echo "   ${SKILLS_DIR}/scripts -> ${REPO_DIR}/inspect/scripts"
+  echo "   ${SKILLS_DIR}/references -> ${REPO_DIR}/inspect/references"
   echo ""
 
   # 4. Verify
   echo "4. Verifying..."
   local errors=0
-  for f in "${AGENTS_DIR}/inspector.md" "${HOOKS_DIR}/inspector-subagent-start.sh" "${HOOKS_DIR}/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-set.sh" "${HOOKS_DIR}/inspector-lsp-fallback.sh" "${SKILLS_DIR}/SKILL.md" "${SKILLS_DIR}/assets/schema.json" "${SKILLS_DIR}/scripts/validate-report" "${SKILLS_DIR}/references/check-taxonomy.md" "${SKILLS_DIR}/references/output-format.md"; do
+  for f in "${AGENTS_DIR}/inspector.md" "${HOOKS_DIR}/inspector-subagent-start.sh" "${HOOKS_DIR}/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-set.sh" "${HOOKS_DIR}/inspector-lsp-fallback.sh" "${SKILLS_DIR}/SKILL.md" "${SKILLS_DIR}/assets" "${SKILLS_DIR}/scripts" "${SKILLS_DIR}/references"; do
     if [ -L "$f" ] && [ -e "$f" ]; then
       echo "   OK  $f"
     else
@@ -89,7 +87,7 @@ do_uninstall() {
   echo "Uninstalling inspector agent..."
   echo ""
 
-  for f in "${AGENTS_DIR}/inspector.md" "${HOOKS_DIR}/inspector-subagent-start.sh" "${HOOKS_DIR}/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-set.sh" "${HOOKS_DIR}/inspector-lsp-fallback.sh" "${SKILLS_DIR}/SKILL.md" "${SKILLS_DIR}/assets/schema.json" "${SKILLS_DIR}/scripts/validate-report" "${SKILLS_DIR}/references/check-taxonomy.md" "${SKILLS_DIR}/references/output-format.md"; do
+  for f in "${AGENTS_DIR}/inspector.md" "${HOOKS_DIR}/inspector-subagent-start.sh" "${HOOKS_DIR}/inspector-lsp-gate.sh" "${HOOKS_DIR}/inspector-lsp-set.sh" "${HOOKS_DIR}/inspector-lsp-fallback.sh" "${SKILLS_DIR}/SKILL.md" "${SKILLS_DIR}/assets" "${SKILLS_DIR}/scripts" "${SKILLS_DIR}/references"; do
     if [ -L "$f" ]; then
       rm "$f"
       echo "  Removed $f"
