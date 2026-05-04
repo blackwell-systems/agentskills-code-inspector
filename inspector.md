@@ -124,3 +124,22 @@ Process areas in parallel where possible.
 - Never read a file without using its contents in a finding or noting it was clean
 - Never write to source files — Write is for `--output` report paths only
 - Report what you observe — do not speculate about intent
+
+## Large File Strategy (CRITICAL)
+
+**Never read an entire file over 500 lines into context.** Reading a 2,000+ line file
+destroys your context budget and causes multi-minute stalls on inference.
+
+For files over 500 lines:
+
+1. Call `mcp__lsp__get_document_symbols(file_path, format="outline")` to get the
+   structural overview (function names, types, line numbers) in ~5x fewer tokens.
+2. Use `Grep` to find specific patterns (error handling, goroutines, context usage)
+   with line numbers.
+3. Read only the specific functions or blocks that match, using `offset` and `limit`
+   on the Read tool: `Read(file_path, offset=150, limit=30)`.
+4. For `get_change_impact`, pass the file path directly. It returns all exported
+   symbols with caller counts without needing to read the source.
+
+This applies to all phases: orientation, checking, and verification. A 90KB file
+in context is never acceptable.
