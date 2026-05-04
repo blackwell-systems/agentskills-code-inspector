@@ -36,20 +36,43 @@ Execute this sequence before any other tool call:
 
 **Step 1:** Call `mcp__lsp__start_lsp(root_dir=<workspace>, language=<lang>)` — infer workspace from the common ancestor of requested paths. Errors here are non-fatal; the server may already be running.
 
-**Step 2:** Call `mcp__lsp__get_document_symbols` on any source file in the workspace to verify the server is working.
-- If it returns symbols: LSP is ready. Proceed directly to auditing.
-- If it errors with "outside workspace root" or "invalid AST": go to Step 3.
+**Step 2:** Call `mcp__lsp__open_document` for one file per target package. This triggers gopls to begin loading those packages.
 
-**Step 3 (fallback):** LSP is unavailable or misconfigured. Proceed with Grep fallback. Note `[LSP unavailable — Grep fallback, reduced confidence]` in the report summary and on every symbol-level finding.
+**Step 3: Workspace Warmup Gate.** Poll `mcp__lsp__get_diagnostics` for each opened file to determine if the workspace is indexed:
+
+```
+for each opened file:
+  call get_diagnostics(file_path)
+  if returns (even empty []): file is indexed
+  if errors or times out: file is not yet indexed
+```
+
+Poll every 3 seconds, up to 30 seconds total. Track how many files are indexed.
+
+- **All files indexed within 10 seconds:** workspace is warm. Record "Tier 1A eligible".
+- **All files indexed within 30 seconds:** workspace is warm but was cold. Record "Tier 1A eligible (slow start)".
+- **Some files still not indexed after 30 seconds:** workspace is cold. Record "Grep-first mode". Skip `get_change_impact` for discovery. Use Grep for pattern discovery, LSP only for targeted verification of specific findings.
+
+This gate prevents the inspector from calling `get_change_impact` (which fans out to dozens of LSP reference queries) on a workspace where gopls hasn't finished indexing. That fan-out on a cold workspace is what causes multi-minute hangs.
+
+**Step 4:** Call `mcp__lsp__get_document_symbols` on any source file to verify the server returns structural data.
+- If it returns symbols: LSP is ready.
+- If it errors with "outside workspace root" or "invalid AST": go to Step 5.
+
+**Step 5 (fallback):** LSP is unavailable or misconfigured. Proceed with Grep fallback. Note `[LSP unavailable — Grep fallback, reduced confidence]` in the report summary and on every symbol-level finding.
 
 > **Note:** If you consistently get workspace mismatch errors, ask the operator to run `mcp__lsp__restart_lsp_server` manually between audit sessions to repoint the server.
 
-**Step 4 (Tier 1A probe):** After the warm-up check succeeds, attempt a Tier 1A availability probe:
+**Step 6 (Tier 1A probe, only if warmup gate passed as "Tier 1A eligible"):**
 - Call `mcp__lsp__get_change_impact(changed_files=[<any_source_file_in_workspace>], include_transitive=false)`
-- If it returns without error: record internally "Tier 1A available". Use `get_change_impact` per file for `dead_symbol` and `test_coverage` checks (replacing the per-symbol `get_references` loop when processing whole files).
-- If it errors or is unavailable: record "Tier 1B only". Fall back to per-symbol `mcp__lsp__get_references` loop as before.
+- If it returns without error within 10 seconds: record internally "Tier 1A available". Use `get_change_impact` per file for `dead_symbol` and `test_coverage` checks.
+- If it errors, times out, or the warmup gate recorded "Grep-first mode": record "Grep-first". Use Grep for discovery, LSP `get_references` only for targeted verification of specific findings you already found via Grep.
 
-The probe result determines which loop runs during auditing — it does NOT block startup. If the probe errors, proceed with Tier 1B normally.
+**Grep-first mode workflow:**
+1. Use Grep to find patterns (goroutines without recover, `_ =` error suppression, `context.Background()` usage, `%v` error wrapping)
+2. For each pattern match, read the surrounding code with `Read(file, offset, limit)` to confirm the finding
+3. Only then call `get_references` on specific symbols if needed for dead-symbol or caller verification
+4. This is faster than Tier 1A on cold repos and produces the same findings for most check types
 
 ## LSP Verification Gate
 
