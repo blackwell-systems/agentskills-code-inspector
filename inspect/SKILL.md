@@ -2,7 +2,7 @@
 name: inspect
 description: Launch a code quality inspector agent to audit defined areas of a codebase. Language-agnostic. Applies a fixed check taxonomy — dead symbols, layer violations, scope overload, coverage gaps, silent failures, duplicate semantics, cross-field consistency, missing tests on exported symbols, unwrapped errors, doc drift, interface saturation, unrecovered panics, context propagation breaks, and init side effects — using LSP-first tool strategies with Tier 1A batch analysis via mcp__lsp__get_change_impact. Returns a severity-tiered findings report with per-finding confidence levels and active LSP tier annotation. Supports --json for structured output, --output for persistence, --checks to target specific check types, and --consumer-repos for cross-repo dead symbol verification. Use when auditing files, packages, or cross-cutting concerns for any of these patterns.
 compatibility: Requires an agent runtime that supports subagent delegation and tool use (e.g. Claude Code).
-allowed-tools: Agent(subagent_type=inspector), mcp__lsp__get_change_impact, mcp__lsp__get_cross_repo_references
+allowed-tools: Agent(subagent_type=inspector), mcp__lsp__start_lsp, mcp__lsp__open_document, mcp__lsp__close_document, mcp__lsp__get_references, mcp__lsp__get_change_impact, mcp__lsp__get_cross_repo_references, mcp__lsp__get_document_symbols, mcp__lsp__get_diagnostics, mcp__lsp__get_info_on_location, mcp__lsp__get_code_actions, mcp__lsp__call_hierarchy, mcp__lsp__go_to_definition, mcp__lsp__go_to_implementation, mcp__lsp__get_server_capabilities
 argument-hint: "<path-or-description> [<path-or-description> ...] [--json] [--output <path>] [--checks <type1>,<type2>]"
 user-invocable: true
 metadata:
@@ -65,9 +65,13 @@ Launch the inspector agent with the user's areas as input. Pass the current work
 directory as the repo root. **Always set `run_in_background: true`** so the audit runs
 asynchronously and the user can continue working while it runs.
 
-**Pre-flight: warm up LSP in the parent session before launching the agent.** Background
-agents cannot receive interactive permission prompts for MCP tools. Call `mcp__lsp__start_lsp`
-yourself first, then set the global gate flag so the agent can proceed without needing the tool:
+**Pre-flight: warm up LSP and ensure permissions.** Background agents cannot receive
+interactive permission prompts for MCP tools. Two requirements:
+
+1. The user's global settings must include `mcp__lsp__*` tools in `permissions.allow`
+   (in `~/.claude/settings.json`). Without this, every LSP call from the background
+   agent will be denied silently and the inspector will hang.
+2. Call `mcp__lsp__start_lsp` in the parent session first, then set the gate flag:
 
 ```bash
 # 1. Start LSP in the parent session (prompts once for permission — approve it)
