@@ -5,6 +5,10 @@ The format is based on Keep a Changelog, Semantic Versioning.
 
 ## [Unreleased]
 
+### Fixed
+- **Expanded `allowed-tools` in SKILL.md** from 2 LSP tools to 15. The inspector agent needs `open_document`, `get_references`, `get_document_symbols`, `get_diagnostics`, and others beyond just `get_change_impact` and `get_cross_repo_references`. Missing tools caused background agents to hang on permission denials.
+- **Documented permissions requirement** in pre-flight section. Users must add `mcp__lsp__*` tools to their global `permissions.allow` in `~/.claude/settings.json` for background inspector agents to work. Without this, every LSP call is denied silently.
+
 ### Changed
 - **Two-layer architecture: `platforms/claude-code/`** — hooks and `install.sh` moved from repo root into `platforms/claude-code/`. Makes the split between the agentskills-standard layer (`inspector.md`, `inspect/`) and the Claude Code platform layer explicit. Future platforms add `platforms/<name>/` without touching the standard layer. `install.sh` updated to use `PLATFORM_DIR` for hook paths and `REPO_DIR` (two levels up) for agent and skill paths.
 
